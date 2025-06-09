@@ -1,65 +1,65 @@
 import express from 'express';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import authRoutes from './routes/auth.js';
+import businessRoutes from './routes/business.js';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '.env') });
+console.log('✅ Loaded MONGO_URI:', process.env.MONGO_URI); // <--- ADD THIS
 const app = express();
+app.use(express.json());
 
-// Home route
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('✅ MongoDB connected'))
+    .catch((err) => console.error('❌ MongoDB error:', err));
+
+// Root route
 app.get('/', (req, res) => {
     res.send('Hello, World!');
 });
 
-// Authentication routes
-app.post('/auth/register', (req, res) => {
-    res.send('Register a new user');
-});
-  
-app.post('/auth/login', (req, res) => {
-    res.send('Log in a user');
-});
-  
-// Business routes
-app.get('/businesses', (req, res) => {
-    res.send('Fetch all businesses');
-});
-  
-app.post('/businesses', (req, res) => {
-    res.send('Create a new business');
-});
-  
-app.get('/businesses/:id', (req, res) => {
-    res.send(`Fetch details of business with ID: ${req.params.id}`);
-});
-  
-// Service routes
+// Auth routes
+app.use('/auth', authRoutes);
+
+// Business routes (real MongoDB logic)
+app.use('/businesses', businessRoutes);
+
+// Dummy Service routes
 app.get('/services', (req, res) => {
     res.send('Fetch all services');
 });
-  
+
 app.post('/services', (req, res) => {
     res.send('Add a new service');
 });
-  
-// Booking routes
+
+// Dummy Booking routes
 app.get('/bookings', (req, res) => {
     res.send('Fetch all bookings');
 });
-  
+
 app.post('/bookings', (req, res) => {
     res.send('Create a new booking');
 });
-  
+
 app.get('/bookings/:id', (req, res) => {
     res.send(`Fetch details of booking with ID: ${req.params.id}`);
 });
-  
-// Availability routes
+
+// Dummy Availability routes
 app.get('/availabilities/:businessId', (req, res) => {
     res.send(`Fetch availability slots for business ID: ${req.params.businessId}`);
 });
-  
+
 app.post('/availabilities', (req, res) => {
     res.send('Add availability slots for a business');
-});  
+});
 
-app.listen(3001, () => {
-    console.log('Server is running on port 3001 - looks good!');
+app.listen(process.env.PORT, () => {
+    console.log(`🚀 Server running at http://localhost:${process.env.PORT}`);
 });
