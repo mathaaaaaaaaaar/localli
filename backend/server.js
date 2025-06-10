@@ -1,65 +1,74 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth.js';
-import businessRoutes from './routes/business.js';
-
+import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import authRoutes from './routes/auth.js';
+import businessRoutes from './routes/business.js';
+import authMiddleware from './middleware/authMiddleware.js';
+import User from './models/User.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env') });
-console.log('✅ Loaded MONGO_URI:', process.env.MONGO_URI); // <--- ADD THIS
+
 const app = express();
+app.use(cors()); // Optional: helps if calling from mobile/web
 app.use(express.json());
 
-// MongoDB connection
+// ✅ MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ MongoDB connected'))
-    .catch((err) => console.error('❌ MongoDB error:', err));
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => console.error('❌ MongoDB error:', err));
 
-// Root route
+// ✅ Root route
 app.get('/', (req, res) => {
-    res.send('Hello, World!');
+  res.send('Hello, World!');
 });
 
-// Auth routes
+// ✅ Auth and Business routes
 app.use('/auth', authRoutes);
-
-// Business routes (real MongoDB logic)
 app.use('/businesses', businessRoutes);
 
-// Dummy Service routes
-app.get('/services', (req, res) => {
-    res.send('Fetch all services');
+// ✅ Profile endpoint
+app.get('/user/profile', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) return res.status(404).send('User not found');
+    res.json(user);
+  } catch {
+    res.status(500).send('Error fetching profile');
+  }
 });
 
-app.post('/services', (req, res) => {
-    res.send('Add a new service');
+// ✅ Get all users (optional filtering by role)
+app.get('/user/all', authMiddleware, async (req, res) => {
+  try {
+    const { role } = req.query;
+    const filter = role ? { role } : {};
+    const users = await User.find(filter).select('-password');
+    res.json(users);
+  } catch (err) {
+    console.error('❌ Error fetching users:', err);
+    res.status(500).send('Error fetching users');
+  }
 });
 
-// Dummy Booking routes
-app.get('/bookings', (req, res) => {
-    res.send('Fetch all bookings');
-});
+// 🧪 Dummy Service routes
+app.get('/services', (req, res) => res.send('Fetch all services'));
+app.post('/services', (req, res) => res.send('Add a new service'));
 
-app.post('/bookings', (req, res) => {
-    res.send('Create a new booking');
-});
+// 🧪 Dummy Booking routes
+app.get('/bookings', (req, res) => res.send('Fetch all bookings'));
+app.post('/bookings', (req, res) => res.send('Create a new booking'));
+app.get('/bookings/:id', (req, res) => res.send(`Fetch details of booking with ID: ${req.params.id}`));
 
-app.get('/bookings/:id', (req, res) => {
-    res.send(`Fetch details of booking with ID: ${req.params.id}`);
-});
+// 🧪 Dummy Availability routes
+app.get('/availabilities/:businessId', (req, res) => res.send(`Fetch availability slots for business ID: ${req.params.businessId}`));
+app.post('/availabilities', (req, res) => res.send('Add availability slots for a business'));
 
-// Dummy Availability routes
-app.get('/availabilities/:businessId', (req, res) => {
-    res.send(`Fetch availability slots for business ID: ${req.params.businessId}`);
-});
-
-app.post('/availabilities', (req, res) => {
-    res.send('Add availability slots for a business');
-});
-
+// ✅ Start server
 app.listen(process.env.PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${process.env.PORT}`);
+  console.log(`🚀 Server running at http://localhost:${process.env.PORT}`);
 });
