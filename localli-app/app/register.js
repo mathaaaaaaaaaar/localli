@@ -28,11 +28,15 @@ export default function Register() {
     }
 
     try {
-      await axios.post(`${API_BASE_URL}auth/register`, {
+      await axios.post(`${API_BASE_URL}/auth/register`, {
         name,
         email,
         password,
         role, // Send selected role
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
       // Auto-login

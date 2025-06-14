@@ -1,20 +1,41 @@
+import cors from 'cors';
+import dotenv from 'dotenv';
 import express from 'express';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import authRoutes from './routes/auth.js';
-import businessRoutes from './routes/business.js';
 import authMiddleware from './middleware/authMiddleware.js';
 import User from './models/User.js';
+import authRoutes from './routes/auth.js';
+import businessRoutes from './routes/business.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env') });
 
+const corsOptions = {
+  origin: 'http://localhost:8081/register', // Replace with your frontend's origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed HTTP methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+  credentials: true, // Allow cookies and credentials
+};
+
 const app = express();
-app.use(cors()); // Optional: helps if calling from mobile/web
+
+app.use(cors(corsOptions)); // Optional: helps if calling from mobile/web
+
+// app.use((req, res, next) => {
+//   res.header('Access-Control-Allow-Origin', 'http://localhost:8081'); // Allow frontend origin
+//   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'); // Allowed methods
+//   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Allowed headers
+//   if (req.method === 'OPTIONS') {
+//     return res.sendStatus(200); // Respond OK to preflight requests
+//   }
+//   next();
+// });
+
+// app.options('*', cors(corsOptions)); // Handle preflight requests
+
 app.use(express.json());
 
 // ✅ MongoDB connection
