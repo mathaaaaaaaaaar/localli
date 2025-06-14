@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View, Text, FlatList, Button,
-  StyleSheet, Alert, RefreshControl, Image
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState } from 'react';
+
 import axios from 'axios';
-import { useRouter } from 'expo-router';
 import { decode as atob } from 'base-64';
+import { useRouter } from 'expo-router';
+import {
+  Alert,
+  StyleSheet,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import API_BASE_URL from '../constants/constants';
 
 export default function Home() {
   const [businesses, setBusinesses] = useState([]);
@@ -35,7 +39,7 @@ export default function Home() {
         : 'https://i.pravatar.cc/100?img=36'; // avatar for customer
       setAvatar(decoded.avatar || defaultAvatar);
 
-      const res = await axios.get('http://192.168.2.222:3001/businesses', {
+      const res = await axios.get(`${API_BASE_URL}/businesses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

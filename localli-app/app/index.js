@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { useState } from 'react';
+
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { StyleSheet } from 'react-native';
+
+import API_BASE_URL from '../constants/constants';
 
 export default function Index() {
   const [email, setEmail] = useState('');
@@ -11,7 +13,7 @@ export default function Index() {
 
   const handleLogin = async () => {
     try {
-      const res = await axios.post('http://192.168.2.222:3001/auth/login', {
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
       });

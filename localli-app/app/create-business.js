@@ -1,17 +1,12 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  StyleSheet,
-  Alert,
-  ScrollView,
-} from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState } from 'react';
+
 import axios from 'axios';
 import { useRouter } from 'expo-router';
+import { StyleSheet } from 'react-native';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import API_BASE_URL from '../constants/constants';
 
 export default function CreateBusiness() {
   const [name, setName] = useState('');
@@ -37,7 +32,7 @@ export default function CreateBusiness() {
     try {
       const token = await AsyncStorage.getItem('userToken');
       await axios.post(
-        'http://192.168.2.222:3001/businesses',
+        `${API_BASE_URL}/businesses`,
         { name, description, category, address },
         {
           headers: { Authorization: `Bearer ${token}` },

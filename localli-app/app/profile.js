@@ -1,7 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  useEffect,
+  useState,
+} from 'react';
+
 import axios from 'axios';
+import {
+  Alert,
+  StyleSheet,
+} from 'react-native';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import API_BASE_URL from '../constants/constants';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -12,7 +22,7 @@ export default function Profile() {
       if (!token) return Alert.alert('Error', 'Token missing. Please log in again.');
 
       try {
-        const res = await axios.get('http://192.168.2.222:3001/user/profile', {
+        const res = await axios.get(`${API_BASE_URL}/user/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data);

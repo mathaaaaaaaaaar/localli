@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
-import {
-  View, Text, TextInput, Button, StyleSheet, Alert
-} from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { useState } from 'react';
+
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import {
+  Alert,
+  Button,
+  Picker,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+
+import API_BASE_URL from '../constants/constants';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -21,7 +28,7 @@ export default function Register() {
     }
 
     try {
-      await axios.post('http://192.168.2.222:3001/auth/register', {
+      await axios.post(`${API_BASE_URL}auth/register`, {
         name,
         email,
         password,
@@ -29,7 +36,7 @@ export default function Register() {
       });
 
       // Auto-login
-      const res = await axios.post('http://192.168.2.222:3001/auth/login', {
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
       });
