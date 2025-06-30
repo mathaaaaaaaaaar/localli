@@ -29,7 +29,8 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
 // ✅ POST create business (only owners)
 router.post('/', authMiddleware, async (req, res) => {
-  if (req.userRole !== 'owner') {
+  if (req.user.role !== 'owner') {
+    console.warn('🚫 Rejected: Not an owner');
     return res.status(403).json({ message: 'Only owners can create businesses' });
   }
 
@@ -42,7 +43,7 @@ router.post('/', authMiddleware, async (req, res) => {
       category,
       address,
       phone,
-      owner: req.userId,
+      owner: req.user.id,
     });
 
     await business.save();
@@ -59,7 +60,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const business = await Business.findById(req.params.id);
     if (!business) return res.status(404).json({ message: 'Business not found' });
 
-    if (req.userRole !== 'owner' || business.owner.toString() !== req.userId) {
+    if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -78,7 +79,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     const business = await Business.findById(req.params.id);
     if (!business) return res.status(404).json({ message: 'Business not found' });
 
-    if (req.userRole !== 'owner' || business.owner.toString() !== req.userId) {
+    if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 

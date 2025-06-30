@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import { LinearGradient } from 'expo-linear-gradient';
+
 import axios from 'axios';
 import {
   Alert,
@@ -31,37 +33,47 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Localli Login</Text>
-      <Text style={styles.title}>Localli Login 🚀</Text>
+    <LinearGradient colors={['#e0f7fa', '#b2ebf2']} style={styles.gradient}>
+      <View style={styles.card}>
+        <Text style={styles.title}>Localli Login</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        autoCapitalize="none"
-        onChangeText={setEmail}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          autoCapitalize="none"
+          onChangeText={setEmail}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        secureTextEntry
-        onChangeText={setPassword}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          secureTextEntry
+          onChangeText={setPassword}
+        />
 
-      <Button title="Login" onPress={handleLogin} />
-    </View>
+        <Button title="Login" onPress={handleLogin} />
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  gradient: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 30,
-    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  card: {
+    backgroundColor: '#ffffffee',
+    padding: 25,
+    borderRadius: 16,
+    width: '90%',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
   },
   title: {
     fontSize: 28,

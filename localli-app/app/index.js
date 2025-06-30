@@ -6,10 +6,13 @@ import {
   Button,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 import API_BASE_URL from '../constants/constants';
 
@@ -33,6 +36,7 @@ export default function Index() {
       const token = res.data.token;
       await AsyncStorage.setItem('userToken', token);
 
+      Toast.show({ type: 'success', text1: 'Login Successful' });
       router.replace('/home');
     } catch (err) {
       console.error('❌ Login error:', err.message);
@@ -46,8 +50,11 @@ export default function Index() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Localli Login</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <Text style={styles.title}>Localli Login 🚀</Text>
 
       <TextInput
         style={styles.input}
@@ -69,7 +76,7 @@ export default function Index() {
       <Button title="Login" onPress={handleLogin} />
       <View style={{ marginVertical: 10 }} />
       <Button title="Register" onPress={() => router.push('/register')} />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

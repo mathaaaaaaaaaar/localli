@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, Button,
-  StyleSheet, Alert, RefreshControl, Image
+  StyleSheet, Alert, RefreshControl,
+  Image, ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { decode as atob } from 'base-64';
 import Toast from 'react-native-toast-message';
+import { useFocusEffect } from '@react-navigation/native';
 
 import API_BASE_URL from '../constants/constants';
 
@@ -19,15 +21,28 @@ export default function Home() {
   const [userName, setUserName] = useState('');
   const [avatar, setAvatar] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
   const router = useRouter();
 
   const fetchData = async () => {
     setRefreshing(true);
-    const token = await AsyncStorage.getItem('userToken');
-    if (!token) return router.replace('/');
-
     try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        router.replace('/');
+        return;
+      }
+
       const decoded = JSON.parse(atob(token.split('.')[1]));
+
+      // Expired token check
+      if (decoded.exp * 1000 < Date.now()) {
+        await AsyncStorage.removeItem('userToken');
+        router.replace('/');
+        return;
+      }
+
       setUserId(decoded.id);
       setUserEmail(decoded.email);
       setUserRole(decoded.role);
@@ -51,15 +66,18 @@ export default function Home() {
       setBusinesses(filtered);
     } catch (err) {
       console.error('❌ Error fetching businesses:', err.message);
-      Alert.alert('Error fetching businesses');
+      Alert.alert('Error', 'Failed to load businesses');
     } finally {
       setRefreshing(false);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [])
+  );
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userToken');
@@ -68,10 +86,7 @@ export default function Home() {
   };
 
   const handleDelete = async (id) => {
-    if (!id) {
-      console.warn('❗ Invalid ID passed to delete');
-      return;
-    }
+    if (!id) return;
 
     Alert.alert(
       'Delete Business',
@@ -84,7 +99,6 @@ export default function Home() {
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('userToken');
-              console.log(`🔍 Deleting business with ID: ${id}`);
               await axios.delete(`${API_BASE_URL}/businesses/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
               });
@@ -103,6 +117,14 @@ export default function Home() {
   const handleEdit = (id) => {
     router.push(`/edit-business?id=${id}`);
   };
+
+  if (loading && businesses.length === 0) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
 
   return (
     <View style={[
@@ -149,7 +171,13 @@ export default function Home() {
             )}
           </View>
         )}
-        ListEmptyComponent={<Text>No businesses found</Text>}
+        ListEmptyComponent={
+          <Text style={{ textAlign: 'center', marginTop: 20, color: 'gray' }}>
+            {userRole === 'owner'
+              ? 'You have not created any businesses yet.'
+              : 'No businesses found. Try again later.'}
+          </Text>
+        }
       />
 
       <Button title="Logout" color="red" onPress={handleLogout} />
@@ -210,5 +238,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 10,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const corsOptions = {
-  origin: 'http://localhost:8081/register', // Replace with your frontend's origin
+  origin: 'http://localhost:8081', // Replace with your frontend's origin
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed HTTP methods
   allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
   credentials: true, // Allow cookies and credentials
@@ -55,7 +55,7 @@ app.use('/businesses', businessRoutes);
 // ✅ Profile endpoint
 app.get('/user/profile', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('-password');
+    const user = await User.findById(req.user.id).select('-password');
     if (!user) return res.status(404).send('User not found');
     res.json(user);
   } catch {

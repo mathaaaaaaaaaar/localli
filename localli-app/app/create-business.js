@@ -38,17 +38,24 @@ export default function CreateBusiness() {
 
     try {
       const token = await AsyncStorage.getItem('userToken');
-      await axios.post(
+      console.log('🟡 Submitting Business:', { name, description, category, address });
+      console.log('🛡️ Token:', token);
+
+      const response = await axios.post(
         `${API_BASE_URL}/businesses`,
         { name, description, category, address },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      console.log('✅ Business created response:', response.data);
       Alert.alert('Success', 'Business created');
       router.replace('/home');
     } catch (err) {
       console.error('❌ Error creating business:', err);
+      if (err.response) {
+        console.error('📛 Server Response:', err.response.data);
+      }
       Alert.alert('Error', 'Failed to create business');
     }
   };
