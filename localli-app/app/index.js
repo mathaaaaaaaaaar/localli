@@ -1,8 +1,15 @@
-import { useState } from 'react';
-
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  StyleSheet,
+  Alert,
+} from 'react-native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { StyleSheet } from 'react-native';
 
 import API_BASE_URL from '../constants/constants';
 
@@ -12,6 +19,11 @@ export default function Index() {
   const router = useRouter();
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Missing Info', 'Please enter both email and password');
+      return;
+    }
+
     try {
       const res = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
@@ -23,7 +35,9 @@ export default function Index() {
 
       router.replace('/home');
     } catch (err) {
-      const errorMessage = err.response?.data || 'Server error';
+      console.error('❌ Login error:', err.message);
+
+      const errorMessage = err.response?.data?.message || err.response?.data || 'Server error';
       Alert.alert(
         'Login failed',
         typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage)
@@ -40,6 +54,7 @@ export default function Index() {
         placeholder="Email"
         value={email}
         autoCapitalize="none"
+        keyboardType="email-address"
         onChangeText={setEmail}
       />
 

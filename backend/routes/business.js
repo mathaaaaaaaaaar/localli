@@ -1,35 +1,40 @@
 import express from 'express';
-
 import authMiddleware from '../middleware/authMiddleware.js';
 import Business from '../models/Business.js';
 
 const router = express.Router();
 
-// 🔐 GET all businesses (public)
+// ✅ GET all businesses (public)
 router.get('/', async (req, res) => {
   try {
     const businesses = await Business.find().populate('owner', 'email');
     res.json(businesses);
   } catch (err) {
-    res.status(500).send('Error fetching businesses');
+    console.error('❌ Error fetching businesses:', err.message);
+    res.status(500).json({ message: 'Error fetching businesses' });
   }
 });
 
-// 🔐 GET single business by ID (protected)
+// ✅ GET single business by ID (protected)
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id).populate('owner', 'email');
-    if (!business) return res.status(404).send('Business not found');
+    if (!business) return res.status(404).json({ message: 'Business not found' });
     res.json(business);
   } catch (err) {
-    res.status(500).send('Error fetching business');
+    console.error('❌ Error fetching business:', err.message);
+    res.status(500).json({ message: 'Error fetching business' });
   }
 });
 
 // ✅ POST create business (only owners)
 router.post('/', authMiddleware, async (req, res) => {
-  if (req.userRole !== 'owner') return res.status(403).send('Only owners can create businesses');
+  if (req.userRole !== 'owner') {
+    return res.status(403).json({ message: 'Only owners can create businesses' });
+  }
+
   const { name, description, category, address, phone } = req.body;
+
   try {
     const business = new Business({
       name,
@@ -39,41 +44,49 @@ router.post('/', authMiddleware, async (req, res) => {
       phone,
       owner: req.userId,
     });
+
     await business.save();
-    res.status(201).send('Business created successfully');
+    res.status(201).json({ message: 'Business created successfully', business });
   } catch (err) {
-    res.status(500).send('Error creating business');
+    console.error('❌ Error creating business:', err.message);
+    res.status(500).json({ message: 'Error creating business' });
   }
 });
 
-// ✅ PUT update business (only owners and owner of that business)
+// ✅ PUT update business (only owner who owns the business)
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).send('Business not found');
-    if (req.userRole !== 'owner' || business.owner.toString() !== req.userId)
-      return res.status(403).send('Not authorized');
+    if (!business) return res.status(404).json({ message: 'Business not found' });
+
+    if (req.userRole !== 'owner' || business.owner.toString() !== req.userId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
 
     Object.assign(business, req.body);
     await business.save();
-    res.json(business);
+    res.json({ message: 'Business updated', business });
   } catch (err) {
-    res.status(500).send('Error updating business');
+    console.error('❌ Error updating business:', err.message);
+    res.status(500).json({ message: 'Error updating business' });
   }
 });
 
-// ✅ DELETE business (only owners and owner of that business)
+// ✅ DELETE business (only owner who owns the business)
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).send('Business not found');
-    if (req.userRole !== 'owner' || business.owner.toString() !== req.userId)
-      return res.status(403).send('Not authorized');
+    if (!business) return res.status(404).json({ message: 'Business not found' });
+
+    if (req.userRole !== 'owner' || business.owner.toString() !== req.userId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
 
     await business.deleteOne();
-    res.send('Business deleted successfully');
+    res.json({ message: 'Business deleted successfully' });
   } catch (err) {
-    res.status(500).send('Error deleting business');
+    console.error('❌ Error deleting business:', err.message);
+    res.status(500).json({ message: 'Error deleting business' });
   }
 });
 

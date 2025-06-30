@@ -6,6 +6,7 @@ import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import API_BASE_URL from '../constants/constants';
 
 export default function EditBusiness() {
   const { id } = useLocalSearchParams();
@@ -18,23 +19,32 @@ export default function EditBusiness() {
 
   useEffect(() => {
     const fetchBusiness = async () => {
-      const token = await AsyncStorage.getItem('userToken');
-      const res = await axios.get(`http://192.168.2.222:3001/businesses/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const { name, description, category, address } = res.data;
-      setName(name);
-      setDescription(description);
-      setCategory(category);
-      setAddress(address);
+      if (!id) return;
+
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        const res = await axios.get(`${API_BASE_URL}/businesses/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const { name, description, category, address } = res.data;
+        setName(name);
+        setDescription(description);
+        setCategory(category);
+        setAddress(address);
+      } catch (err) {
+        console.error('❌ Error fetching business:', err.message);
+        Alert.alert('Error', 'Unable to fetch business details');
+        router.replace('/home');
+      }
     };
+
     fetchBusiness();
   }, [id]);
 
   const handleUpdate = async () => {
-    const token = await AsyncStorage.getItem('userToken');
     try {
-      await axios.put(`http://192.168.2.222:3001/businesses/${id}`, {
+      const token = await AsyncStorage.getItem('userToken');
+      await axios.put(`${API_BASE_URL}/businesses/${id}`, {
         name,
         description,
         category,
@@ -45,8 +55,8 @@ export default function EditBusiness() {
       Alert.alert('Success', 'Business updated');
       router.replace('/home');
     } catch (err) {
-      console.error(err);
-      Alert.alert('Error updating business');
+      console.error('❌ Error updating business:', err.message);
+      Alert.alert('Error', 'Failed to update business');
     }
   };
 
@@ -67,9 +77,7 @@ export default function EditBusiness() {
 
       <Text style={styles.label}>Category</Text>
       <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={category}
-          onValueChange={setCategory}>
+        <Picker selectedValue={category} onValueChange={setCategory}>
           <Picker.Item label="Select Category" value="" />
           <Picker.Item label="Salon" value="Salon" />
           <Picker.Item label="Spa" value="Spa" />

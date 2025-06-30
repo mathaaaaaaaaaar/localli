@@ -1,16 +1,11 @@
-import { useState } from 'react';
-
-import axios from 'axios';
-import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import {
-  Alert,
-  Button,
-  Picker,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+  View, Text, TextInput, Button, StyleSheet, Alert
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 
 import API_BASE_URL from '../constants/constants';
 
@@ -23,7 +18,18 @@ export default function Register() {
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      Alert.alert('All fields are required');
+      Alert.alert('Missing Fields', 'All fields are required');
+      return;
+    }
+
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters long');
       return;
     }
 
@@ -32,7 +38,7 @@ export default function Register() {
         name,
         email,
         password,
-        role, // Send selected role
+        role,
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -49,8 +55,8 @@ export default function Register() {
       await AsyncStorage.setItem('userToken', token);
       router.replace('/home');
     } catch (err) {
-      console.error('❌ Registration Error:', err); // Add this
-      const msg = err.response?.data || 'Something went wrong';
+      console.error('❌ Registration Error:', err);
+      const msg = err.response?.data?.message || err.response?.data || 'Something went wrong';
       Alert.alert('Registration failed', typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   };
@@ -63,6 +69,7 @@ export default function Register() {
         style={styles.input}
         placeholder="Name"
         value={name}
+        returnKeyType="next"
         onChangeText={setName}
       />
       <TextInput
@@ -70,6 +77,8 @@ export default function Register() {
         placeholder="Email"
         value={email}
         autoCapitalize="none"
+        keyboardType="email-address"
+        returnKeyType="next"
         onChangeText={setEmail}
       />
       <TextInput
@@ -77,6 +86,7 @@ export default function Register() {
         placeholder="Password"
         secureTextEntry
         value={password}
+        returnKeyType="done"
         onChangeText={setPassword}
       />
 

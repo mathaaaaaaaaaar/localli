@@ -1,15 +1,13 @@
-import { useState } from 'react';
-
-import axios from 'axios';
-import { decode as atob } from 'base-64';
-import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  StyleSheet,
+  View, Text, FlatList, Button,
+  StyleSheet, Alert, RefreshControl, Image
 } from 'react-native';
-import Toast from 'react-native-toast-message';
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { useRouter } from 'expo-router';
+import { decode as atob } from 'base-64';
+import Toast from 'react-native-toast-message';
 
 import API_BASE_URL from '../constants/constants';
 
@@ -33,11 +31,14 @@ export default function Home() {
       setUserId(decoded.id);
       setUserEmail(decoded.email);
       setUserRole(decoded.role);
-      setUserName(decoded.name);const defaultAvatar =
-      decoded.role === 'owner'
-        ? 'https://i.pravatar.cc/100?img=12' // avatar for owner
-        : 'https://i.pravatar.cc/100?img=36'; // avatar for customer
-      setAvatar(decoded.avatar || defaultAvatar);
+      setUserName(decoded.name);
+
+      const defaultAvatar =
+        decoded.role === 'owner'
+          ? 'https://i.pravatar.cc/100?img=12'
+          : 'https://i.pravatar.cc/100?img=36';
+
+      setAvatar(decoded.avatar?.trim() ? decoded.avatar : defaultAvatar);
 
       const res = await axios.get(`${API_BASE_URL}/businesses`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -67,17 +68,36 @@ export default function Home() {
   };
 
   const handleDelete = async (id) => {
-    const token = await AsyncStorage.getItem('userToken');
-    try {
-      await axios.delete(`http://192.168.2.222:3001/businesses/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      Toast.show({ type: 'success', text1: 'Business deleted' });
-      fetchData();
-    } catch (err) {
-      console.error('❌ Error deleting business:', err.message);
-      Alert.alert('Error deleting business');
+    if (!id) {
+      console.warn('❗ Invalid ID passed to delete');
+      return;
     }
+
+    Alert.alert(
+      'Delete Business',
+      'Are you sure you want to delete this business?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('userToken');
+              console.log(`🔍 Deleting business with ID: ${id}`);
+              await axios.delete(`${API_BASE_URL}/businesses/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              Toast.show({ type: 'success', text1: 'Business deleted' });
+              fetchData();
+            } catch (err) {
+              console.error('❌ Error deleting business:', err.message);
+              Alert.alert('Error', 'Failed to delete business');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleEdit = (id) => {
@@ -90,7 +110,9 @@ export default function Home() {
       userRole === 'owner' ? styles.ownerBackground : styles.customerBackground
     ]}>
       <View style={styles.header}>
-        <Image source={{ uri: avatar }} style={styles.avatar} />
+        {avatar ? (
+          <Image source={{ uri: avatar }} style={styles.avatar} />
+        ) : null}
         <View>
           <Text style={styles.welcome}>Welcome, {userName}</Text>
           <Text style={styles.email}>{userEmail}</Text>
