@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, Button,
   StyleSheet, Alert, RefreshControl,
-  Image, ActivityIndicator
+  Image, ActivityIndicator, TextInput, TouchableOpacity
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -10,8 +10,19 @@ import { useRouter } from 'expo-router';
 import { decode as atob } from 'base-64';
 import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import API_BASE_URL from '../constants/constants';
+
+const categoryIcons = {
+  Barbershop: 'content-cut',
+  Salon: 'hair-dryer',
+  Spa: 'spa',
+  Gym: 'dumbbell',
+  Clinic: 'medical-bag',
+  Dentist: 'tooth',
+  Massage: 'hands-pray',
+};
 
 export default function Home() {
   const [businesses, setBusinesses] = useState([]);
@@ -22,6 +33,9 @@ export default function Home() {
   const [avatar, setAvatar] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [sortOption, setSortOption] = useState('az');
 
   const router = useRouter();
 
@@ -36,7 +50,6 @@ export default function Home() {
 
       const decoded = JSON.parse(atob(token.split('.')[1]));
 
-      // Expired token check
       if (decoded.exp * 1000 < Date.now()) {
         await AsyncStorage.removeItem('userToken');
         router.replace('/');
@@ -118,6 +131,18 @@ export default function Home() {
     router.push(`/edit-business?id=${id}`);
   };
 
+  const filteredBusinesses = businesses
+    .filter(b =>
+      (!selectedCategory || b.category === selectedCategory) &&
+      b.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortOption === 'az') {
+        return a.name.localeCompare(b.name);
+      }
+      return 0;
+    });
+
   if (loading && businesses.length === 0) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -127,42 +152,68 @@ export default function Home() {
   }
 
   return (
-    <View style={[
-      styles.container,
-      userRole === 'owner' ? styles.ownerBackground : styles.customerBackground
-    ]}>
+    <View style={[styles.container, styles.sharedBackground]}>
       <View style={styles.header}>
-        {avatar ? (
-          <Image source={{ uri: avatar }} style={styles.avatar} />
-        ) : null}
+        {avatar ? <Image source={{ uri: avatar }} style={styles.avatar} /> : null}
         <View>
           <Text style={styles.welcome}>Welcome, {userName}</Text>
           <Text style={styles.email}>{userEmail}</Text>
         </View>
       </View>
 
-      {userRole === 'owner' && (
-        <View style={{ marginBottom: 10 }}>
-          <Button title="Create Business" onPress={() => router.push('/create-business')} />
-        </View>
-      )}
+      <TextInput
+        placeholder="Search businesses..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        style={styles.input}
+      />
 
-      {userRole === 'customer' && (
-        <Text style={styles.infoText}>
-          You are a customer. You can browse available businesses.
-        </Text>
-      )}
+      <View style={styles.categoryBar}>
+        {Object.keys(categoryIcons).map((cat) => (
+          <TouchableOpacity
+            key={cat}
+            style={[
+              styles.iconButton,
+              selectedCategory === cat && styles.activeIconButton,
+            ]}
+            onPress={() => setSelectedCategory(selectedCategory === cat ? '' : cat)}
+          >
+            <Icon name={categoryIcons[cat]} size={24} color="#333" />
+            <Text style={styles.iconLabel}>{cat}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.sortRow}>
+        <Button
+          title="Sort A-Z"
+          onPress={() => setSortOption('az')}
+        />
+        {userRole === 'owner' && (
+          <Button
+            title="Create Business"
+            onPress={() => router.push('/create-business')}
+          />
+        )}
+      </View>
 
       <FlatList
-        data={businesses}
+        data={filteredBusinesses}
         keyExtractor={(item) => item._id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.name}>{item.name}</Text>
+            <View style={styles.cardHeader}>
+              <Icon
+                name={categoryIcons[item.category] || 'briefcase'}
+                size={20}
+                color="#333"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.name}>{item.name}</Text>
+            </View>
             <Text>{item.description}</Text>
             <Text style={styles.meta}>{item.category} | {item.address}</Text>
-
             {userRole === 'owner' && (
               <View style={styles.buttonRow}>
                 <Button title="Edit" onPress={() => handleEdit(item._id)} />
@@ -191,11 +242,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
   },
-  ownerBackground: {
-    backgroundColor: '#e6f2ff',
-  },
-  customerBackground: {
-    backgroundColor: '#e6ffe6',
+  sharedBackground: {
+    backgroundColor: '#f1faff',
   },
   header: {
     flexDirection: 'row',
@@ -211,9 +259,34 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 14, color: 'gray',
   },
-  infoText: {
-    color: 'gray',
-    fontStyle: 'italic',
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 8,
+    marginBottom: 10,
+    borderRadius: 5,
+  },
+  categoryBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  iconButton: {
+    alignItems: 'center',
+    margin: 5,
+  },
+  activeIconButton: {
+    backgroundColor: '#cceeff',
+    borderRadius: 5,
+    padding: 4,
+  },
+  iconLabel: {
+    fontSize: 10,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 10,
   },
   card: {
@@ -223,6 +296,11 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 8,
     backgroundColor: '#fff',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
   },
   name: {
     fontSize: 18,

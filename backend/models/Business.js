@@ -13,7 +13,7 @@ const businessSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['Salon', 'Spa', 'Barbershop', 'Clinic', 'Gym'],
+    enum: ['Salon', 'Spa', 'Barbershop', 'Clinic', 'Gym', 'Dentist', 'Massage'],
     required: true,
   },
   address: {

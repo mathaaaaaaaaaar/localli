@@ -4,10 +4,29 @@ import Business from '../models/Business.js';
 
 const router = express.Router();
 
-// ✅ GET all businesses (public)
+// ✅ GET all businesses with filters, search, and sort
 router.get('/', async (req, res) => {
   try {
-    const businesses = await Business.find().populate('owner', 'email');
+    const { search, category, sort } = req.query;
+    const filter = {};
+
+    if (search) {
+      filter.name = { $regex: search, $options: 'i' }; // case-insensitive search
+    }
+
+    if (category) {
+      filter.category = category;
+    }
+
+    let sortOption = { createdAt: -1 }; // default to latest
+    if (sort === 'name_asc') sortOption = { name: 1 };
+    if (sort === 'name_desc') sortOption = { name: -1 };
+    if (sort === 'latest') sortOption = { createdAt: -1 };
+
+    const businesses = await Business.find(filter)
+      .populate('owner', 'email')
+      .sort(sortOption);
+
     res.json(businesses);
   } catch (err) {
     console.error('❌ Error fetching businesses:', err.message);

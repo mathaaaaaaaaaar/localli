@@ -84,6 +84,8 @@ export default function EditBusiness() {
           <Picker.Item label="Barbershop" value="Barbershop" />
           <Picker.Item label="Clinic" value="Clinic" />
           <Picker.Item label="Gym" value="Gym" />
+          <Picker.Item label="Dentist" value="Dentist" />
+          <Picker.Item label="Massage" value="Massage" />
         </Picker>
       </View>
 
