@@ -90,6 +90,8 @@ export default function CreateBusiness() {
           <Picker.Item label="Barbershop" value="Barbershop" />
           <Picker.Item label="Clinic" value="Clinic" />
           <Picker.Item label="Gym" value="Gym" />
+          <Picker.Item label="Dentist" value="Dentist" />
+          <Picker.Item label="Massage" value="Massage" />
         </Picker>
       </View>
       {errors.category && <Text style={styles.error}>{errors.category}</Text>}
