@@ -53,7 +53,7 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.status(403).json({ message: 'Only owners can create businesses' });
   }
 
-  const { name, description, category, address, phone } = req.body;
+  const { name, description, category, address, phone, price } = req.body;
 
   try {
     const business = new Business({
@@ -62,6 +62,7 @@ router.post('/', authMiddleware, async (req, res) => {
       category,
       address,
       phone,
+      price,
       owner: req.user.id,
     });
 
