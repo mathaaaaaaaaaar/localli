@@ -1,8 +1,17 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, Button,
-  StyleSheet, Alert, RefreshControl,
-  Image, ActivityIndicator, TextInput, TouchableOpacity
+  Linking,
+  View,
+  Text,
+  FlatList,
+  Button,
+  StyleSheet,
+  Alert,
+  RefreshControl,
+  Image,
+  ActivityIndicator,
+  TextInput,
+  TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -43,30 +52,23 @@ export default function Home() {
     setRefreshing(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        router.replace('/');
-        return;
-      }
+      if (!token) return router.replace('/');
 
       const decoded = JSON.parse(atob(token.split('.')[1]));
 
       if (decoded.exp * 1000 < Date.now()) {
         await AsyncStorage.removeItem('userToken');
-        router.replace('/');
-        return;
+        return router.replace('/');
       }
 
       setUserId(decoded.id);
       setUserEmail(decoded.email);
       setUserRole(decoded.role);
       setUserName(decoded.name);
-
-      const defaultAvatar =
-        decoded.role === 'owner'
-          ? 'https://i.pravatar.cc/100?img=12'
-          : 'https://i.pravatar.cc/100?img=36';
-
-      setAvatar(decoded.avatar?.trim() ? decoded.avatar : defaultAvatar);
+      const defaultAvatar = decoded.role === 'owner'
+        ? 'https://i.pravatar.cc/100?img=12'
+        : 'https://i.pravatar.cc/100?img=36';
+      setAvatar(decoded.avatar?.trim() || defaultAvatar);
 
       const res = await axios.get(`${API_BASE_URL}/businesses`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -86,11 +88,7 @@ export default function Home() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchData();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { fetchData(); }, []));
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userToken');
@@ -101,47 +99,36 @@ export default function Home() {
   const handleDelete = async (id) => {
     if (!id) return;
 
-    Alert.alert(
-      'Delete Business',
-      'Are you sure you want to delete this business?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await AsyncStorage.getItem('userToken');
-              await axios.delete(`${API_BASE_URL}/businesses/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              Toast.show({ type: 'success', text1: 'Business deleted' });
-              fetchData();
-            } catch (err) {
-              console.error('❌ Error deleting business:', err.message);
-              Alert.alert('Error', 'Failed to delete business');
-            }
-          },
+    Alert.alert('Delete Business', 'Are you sure you want to delete this business?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const token = await AsyncStorage.getItem('userToken');
+            await axios.delete(`${API_BASE_URL}/businesses/${id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            Toast.show({ type: 'success', text1: 'Business deleted' });
+            fetchData();
+          } catch (err) {
+            console.error('❌ Error deleting business:', err.message);
+            Alert.alert('Error', 'Failed to delete business');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const handleEdit = (id) => {
-    router.push(`/edit-business?id=${id}`);
-  };
+  const handleEdit = (id) => router.push(`/edit-business?id=${id}`);
 
   const filteredBusinesses = businesses
     .filter(b =>
       (!selectedCategory || b.category === selectedCategory) &&
       b.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .sort((a, b) => {
-      if (sortOption === 'az') {
-        return a.name.localeCompare(b.name);
-      }
-      return 0;
-    });
+    .sort((a, b) => sortOption === 'az' ? a.name.localeCompare(b.name) : 0);
 
   if (loading && businesses.length === 0) {
     return (
@@ -154,11 +141,16 @@ export default function Home() {
   return (
     <View style={[styles.container, styles.sharedBackground]}>
       <View style={styles.header}>
-        {avatar ? <Image source={{ uri: avatar }} style={styles.avatar} /> : null}
-        <View>
-          <Text style={styles.welcome}>Welcome, {userName}</Text>
-          <Text style={styles.email}>{userEmail}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          {avatar && <Image source={{ uri: avatar }} style={styles.avatar} />}
+          <View>
+            <Text style={styles.welcome}>Welcome, {userName}</Text>
+            <Text style={styles.email}>{userEmail}</Text>
+          </View>
         </View>
+        <TouchableOpacity onPress={handleLogout}>
+          <Icon name="logout" size={26} color="red" />
+        </TouchableOpacity>
       </View>
 
       <TextInput
@@ -169,13 +161,10 @@ export default function Home() {
       />
 
       <View style={styles.categoryBar}>
-        {Object.keys(categoryIcons).map((cat) => (
+        {Object.keys(categoryIcons).map(cat => (
           <TouchableOpacity
             key={cat}
-            style={[
-              styles.iconButton,
-              selectedCategory === cat && styles.activeIconButton,
-            ]}
+            style={[styles.iconButton, selectedCategory === cat && styles.activeIconButton]}
             onPress={() => setSelectedCategory(selectedCategory === cat ? '' : cat)}
           >
             <Icon name={categoryIcons[cat]} size={24} color="#333" />
@@ -185,16 +174,8 @@ export default function Home() {
       </View>
 
       <View style={styles.sortRow}>
-        <Button
-          title="Sort A-Z"
-          onPress={() => setSortOption('az')}
-        />
-        {userRole === 'owner' && (
-          <Button
-            title="Create Business"
-            onPress={() => router.push('/create-business')}
-          />
-        )}
+        <Button title="Sort A-Z" onPress={() => setSortOption('az')} />
+        {userRole === 'owner' && <Button title="Create Business" onPress={() => router.push('/create-business')} />}
       </View>
 
       <FlatList
@@ -203,17 +184,33 @@ export default function Home() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Icon
-                name={categoryIcons[item.category] || 'briefcase'}
-                size={20}
-                color="#333"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.name}>{item.name}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name={categoryIcons[item.category] || 'store'} size={20} color="#555" style={{ marginRight: 8 }} />
+                <Text style={styles.name}>{item.name}</Text>
+              </View>
+              {userRole === 'customer' && item.price != null && (
+                <Text style={styles.priceTag}>${parseFloat(item.price).toFixed(2)}</Text>
+              )}
             </View>
+
             <Text>{item.description}</Text>
             <Text style={styles.meta}>{item.category} | {item.address}</Text>
+
+            {item.phone && (
+              <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.phone}`)}>
+                <Text style={styles.phoneNumber}>📞 {item.phone}</Text>
+              </TouchableOpacity>
+            )}
+
+            {userRole === 'customer' && item.price != null && (
+              <View style={styles.priceAndButtonWrapper}>
+                <TouchableOpacity style={styles.bookButton} onPress={() => {}}>
+                  <Text style={styles.bookButtonText}>Book Now</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {userRole === 'owner' && (
               <View style={styles.buttonRow}>
                 <Button title="Edit" onPress={() => handleEdit(item._id)} />
@@ -230,65 +227,28 @@ export default function Home() {
           </Text>
         }
       />
-
-      <Button title="Logout" color="red" onPress={handleLogout} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 50,
-  },
-  sharedBackground: {
-    backgroundColor: '#f1faff',
-  },
+  container: { flex: 1, paddingHorizontal: 20, paddingTop: 50 },
+  sharedBackground: { backgroundColor: '#f1faff' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
-  avatar: {
-    width: 50, height: 50, borderRadius: 25, marginRight: 10,
-  },
-  welcome: {
-    fontSize: 18, fontWeight: 'bold',
-  },
-  email: {
-    fontSize: 14, color: 'gray',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 8,
-    marginBottom: 10,
-    borderRadius: 5,
-  },
-  categoryBar: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    marginBottom: 10,
-  },
-  iconButton: {
-    alignItems: 'center',
-    margin: 5,
-  },
-  activeIconButton: {
-    backgroundColor: '#cceeff',
-    borderRadius: 5,
-    padding: 4,
-  },
-  iconLabel: {
-    fontSize: 10,
-  },
-  sortRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
+  avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 10 },
+  welcome: { fontSize: 18, fontWeight: 'bold' },
+  email: { fontSize: 14, color: 'gray' },
+  input: { borderWidth: 1, borderColor: '#ccc', padding: 8, marginBottom: 10, borderRadius: 5 },
+  categoryBar: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', marginBottom: 10 },
+  iconButton: { alignItems: 'center', margin: 5 },
+  activeIconButton: { backgroundColor: '#cceeff', borderRadius: 5, padding: 4 },
+  iconLabel: { fontSize: 10 },
+  sortRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   card: {
     padding: 15,
     marginBottom: 15,
@@ -297,28 +257,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#fff',
   },
-  cardHeader: {
-    flexDirection: 'row',
+  name: { fontSize: 18, fontWeight: 'bold' },
+  meta: { marginTop: 5, fontStyle: 'italic', fontSize: 12, color: 'gray' },
+  phoneNumber: { marginTop: 5, color: '#007aff', fontWeight: '500', fontSize: 16 },
+  priceTag: { fontSize: 20, fontWeight: 'bold', color: '#1e88e5' },
+  priceAndButtonWrapper: { marginTop: 10, alignItems: 'center' },
+  bookButton: {
+    marginTop: 8,
+    backgroundColor: '#43a047',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
     alignItems: 'center',
-    marginBottom: 5,
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  meta: {
-    marginTop: 5,
-    fontStyle: 'italic',
-    fontSize: 12,
-    color: 'gray',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  centered: {
     justifyContent: 'center',
-    alignItems: 'center',
+    width: '100%',
   },
+  bookButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  centered: { justifyContent: 'center', alignItems: 'center' },
 });

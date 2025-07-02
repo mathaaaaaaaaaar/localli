@@ -25,6 +25,11 @@ const businessSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  price: {
+    type: Number,
+    required: true,
+    min: [0, 'Price must be a positive number'],
+  },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
