@@ -123,6 +123,10 @@ export default function Home() {
 
   const handleEdit = (id) => router.push(`/edit-business?id=${id}`);
 
+  const handleBookNow = (businessId) => {
+    router.push(`/book-appointment?businessId=${businessId}`);
+  };
+
   const filteredBusinesses = businesses
     .filter(b =>
       (!selectedCategory || b.category === selectedCategory) &&
@@ -205,7 +209,7 @@ export default function Home() {
 
             {userRole === 'customer' && item.price != null && (
               <View style={styles.priceAndButtonWrapper}>
-                <TouchableOpacity style={styles.bookButton} onPress={() => {}}>
+                <TouchableOpacity style={styles.bookButton} onPress={() => handleBookNow(item._id)}>
                   <Text style={styles.bookButtonText}>Book Now</Text>
                 </TouchableOpacity>
               </View>
