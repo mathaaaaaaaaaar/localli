@@ -1,3 +1,4 @@
+// 📁 app/home.js
 import React, { useState, useCallback } from 'react';
 import {
   Linking,
@@ -18,7 +19,7 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { decode as atob } from 'base-64';
 import Toast from 'react-native-toast-message';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import API_BASE_URL from '../constants/constants';
@@ -47,6 +48,8 @@ export default function Home() {
   const [sortOption, setSortOption] = useState('az');
 
   const router = useRouter();
+  const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack();
 
   const fetchData = async () => {
     setRefreshing(true);
@@ -122,9 +125,14 @@ export default function Home() {
   };
 
   const handleEdit = (id) => router.push(`/edit-business?id=${id}`);
+  const handleBookNow = (businessId) => router.push(`/book-appointment?businessId=${businessId}`);
 
-  const handleBookNow = (businessId) => {
-    router.push(`/book-appointment?businessId=${businessId}`);
+  const handleViewAppointments = () => {
+    if (userRole === 'customer') {
+      router.push('/my-appointments');
+    } else if (userRole === 'owner') {
+      router.push('/business-bookings');
+    }
   };
 
   const filteredBusinesses = businesses
@@ -145,6 +153,12 @@ export default function Home() {
   return (
     <View style={[styles.container, styles.sharedBackground]}>
       <View style={styles.header}>
+        {canGoBack && (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
+            <Icon name="arrow-left" size={26} color="#000" />
+          </TouchableOpacity>
+        )}
+
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           {avatar && <Image source={{ uri: avatar }} style={styles.avatar} />}
           <View>
@@ -152,10 +166,17 @@ export default function Home() {
             <Text style={styles.email}>{userEmail}</Text>
           </View>
         </View>
+
         <TouchableOpacity onPress={handleLogout}>
           <Icon name="logout" size={26} color="red" />
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity style={styles.appointmentButton} onPress={handleViewAppointments}>
+        <Text style={styles.appointmentButtonText}>
+          {userRole === 'owner' ? 'Booked Appointments' : 'View My Appointments'}
+        </Text>
+      </TouchableOpacity>
 
       <TextInput
         placeholder="Search businesses..."
@@ -247,6 +268,14 @@ const styles = StyleSheet.create({
   avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 10 },
   welcome: { fontSize: 18, fontWeight: 'bold' },
   email: { fontSize: 14, color: 'gray' },
+  appointmentButton: {
+    backgroundColor: '#1976d2',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  appointmentButtonText: { color: 'white', fontWeight: 'bold' },
   input: { borderWidth: 1, borderColor: '#ccc', padding: 8, marginBottom: 10, borderRadius: 5 },
   categoryBar: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', marginBottom: 10 },
   iconButton: { alignItems: 'center', margin: 5 },
