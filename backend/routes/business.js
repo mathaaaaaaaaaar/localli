@@ -1,4 +1,5 @@
 import express from 'express';
+
 import authMiddleware from '../middleware/authMiddleware.js';
 import Business from '../models/Business.js';
 
@@ -110,5 +111,63 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Error deleting business' });
   }
 });
+
+// ✅ POST book a service (only customers)
+router.post('/:id/book', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'customer') {
+    console.warn('🚫 Rejected: Not a customer');
+    return res.status(403).json({ message: 'Only customers can book services' });
+  }
+
+  const { date } = req.body;
+
+  try {
+    const business = await Business.findById(req.params.id);
+    if (!business) return res.status(404).json({ message: 'Business not found' });
+
+    const booking = {
+      customer: req.user.id,
+      date,
+    };
+
+    business.bookings.push(booking);
+    await business.save();
+
+    res.status(201).json({ message: 'Service booked successfully', booking });
+  } catch (err) {
+    console.error('❌ Error booking service:', err.message);
+    res.status(500).json({ message: 'Error booking service' });
+  }
+});
+
+// ✅ GET bookings for a business (role-based visibility)
+router.get('/:id/bookings', authMiddleware, async (req, res) => {
+  try {
+    const business = await Business.findById(req.params.id).populate('bookings.customer', 'name email');
+    if (!business) return res.status(404).json({ message: 'Business not found' });
+
+    if (req.user.role === 'owner') {
+      // Owners see all bookings
+      return res.json(business.bookings);
+    } else if (req.user.role === 'customer') {
+      // Customers see only available times
+      const bookedDates = business.bookings.map((booking) => booking.date);
+      const availableTimes = generateAvailableTimes(bookedDates); // Implement logic to generate available times
+      return res.json({ availableTimes });
+    } else {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+  } catch (err) {
+    console.error('❌ Error fetching bookings:', err.message);
+    res.status(500).json({ message: 'Error fetching bookings' });
+  }
+});
+
+// Helper function to generate available times
+function generateAvailableTimes(bookedDates) {
+  const allTimes = []; // Define all possible times (e.g., 9 AM to 5 PM)
+  const availableTimes = allTimes.filter((time) => !bookedDates.includes(time));
+  return availableTimes;
+}
 
 export default router;

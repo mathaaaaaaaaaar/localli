@@ -35,6 +35,13 @@ const businessSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  bookings: [
+    {
+      customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      date: { type: Date, required: true },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,
