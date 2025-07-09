@@ -1,1 +1,7 @@
-node_modules
+# Root-level
+node_modules/
+package-lock.json
+
+# Frontend
+localli-app/node_modules/
+localli-app/package-lock.json

@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  Button,
+  TouchableOpacity,
   StyleSheet,
   Alert,
   KeyboardAvoidingView,
@@ -40,12 +40,8 @@ export default function Index() {
       router.replace('/home');
     } catch (err) {
       console.error('❌ Login error:', err.message);
-
-      const errorMessage = err.response?.data?.message || err.response?.data || 'Server error';
-      Alert.alert(
-        'Login failed',
-        typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage)
-      );
+      const errorMessage = err.response?.data?.message || 'Invalid credentials';
+      Alert.alert('Login failed', errorMessage);
     }
   };
 
@@ -54,28 +50,34 @@ export default function Index() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>Localli Login 🚀</Text>
+      <Text style={styles.title}>👋 Welcome to Localli</Text>
 
       <TextInput
         style={styles.input}
         placeholder="Email"
+        placeholderTextColor="#999"
         value={email}
+        onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
-        onChangeText={setEmail}
       />
 
       <TextInput
         style={styles.input}
         placeholder="Password"
+        placeholderTextColor="#999"
         value={password}
-        secureTextEntry
         onChangeText={setPassword}
+        secureTextEntry
       />
 
-      <Button title="Login" onPress={handleLogin} />
-      <View style={{ marginVertical: 10 }} />
-      <Button title="Register" onPress={() => router.push('/register')} />
+      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
+        <Text style={styles.loginText}>Login</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => router.push('/register')}>
+        <Text style={styles.registerText}>Don't have an account? Register</Text>
+      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
@@ -83,19 +85,41 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f4faff',
     justifyContent: 'center',
     paddingHorizontal: 30,
-    backgroundColor: '#fff',
   },
   title: {
-    fontSize: 28,
-    marginBottom: 30,
+    fontSize: 26,
+    fontWeight: 'bold',
     textAlign: 'center',
+    marginBottom: 40,
+    color: '#333',
   },
   input: {
-    borderBottomWidth: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
     marginBottom: 20,
     fontSize: 16,
-    padding: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  loginBtn: {
+    backgroundColor: '#007bff',
+    padding: 14,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  loginText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  registerText: {
+    textAlign: 'center',
+    color: '#555',
+    fontSize: 14,
   },
 });
