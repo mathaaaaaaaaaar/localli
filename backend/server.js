@@ -1,6 +1,8 @@
 import cors from 'cors';
 import express from 'express';
+import dotenv from 'dotenv';
 import path from 'path';
+import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 
 import authMiddleware from './middleware/authMiddleware.js';
