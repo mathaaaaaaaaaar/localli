@@ -168,30 +168,38 @@ export default function MyAppointments() {
         <Text style={styles.meta}>{date} | {slot}</Text>
 
         {userRole === 'owner' && (
-          <>
-            <Text style={styles.customer}>
-              👤 {item.customer?.name || 'Unknown'} ({item.customer?.email})
-            </Text>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => showRescheduleModal(item)}>
-              <Icon name="calendar-edit" size={18} color="#fff" />
-              <Text style={styles.cancelText}>Reschedule</Text>
-            </TouchableOpacity>
-            {!item.confirmed && (
-              <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: '#4caf50' }]} onPress={() => confirmAppointment(item._id)}>
-                <Icon name="check" size={18} color="#fff" />
-                <Text style={styles.cancelText}>Confirm</Text>
-              </TouchableOpacity>
-            )}
-          </>
+          <Text style={styles.customer}>
+            👤 {item.customer?.name || 'Unknown'} ({item.customer?.email})
+          </Text>
         )}
 
-        <TouchableOpacity
-          style={styles.cancelBtn}
-          onPress={() => cancelAppointment(item._id)}
-        >
-          <Icon name="cancel" size={18} color="#fff" />
-          <Text style={styles.cancelText}>{userRole === 'owner' ? 'Cancel' : 'Cancel'}</Text>
-        </TouchableOpacity>
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#ff9800' }]}
+            onPress={() => showRescheduleModal(item)}
+          >
+            <Icon name="calendar-edit" size={18} color="#fff" />
+            <Text style={styles.actionText}>Reschedule</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#f44336' }]}
+            onPress={() => cancelAppointment(item._id)}
+          >
+            <Icon name="cancel" size={18} color="#fff" />
+            <Text style={styles.actionText}>Cancel</Text>
+          </TouchableOpacity>
+
+          {userRole === 'owner' && !item.confirmed && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#4caf50' }]}
+              onPress={() => confirmAppointment(item._id)}
+            >
+              <Icon name="check" size={18} color="#fff" />
+              <Text style={styles.actionText}>Confirm</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
   };
@@ -276,16 +284,20 @@ const styles = StyleSheet.create({
   name: { fontSize: 18, fontWeight: 'bold' },
   meta: { color: 'gray', marginBottom: 6 },
   customer: { color: '#444', marginBottom: 8 },
-  cancelBtn: {
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f44336',
     padding: 8,
     borderRadius: 6,
-    marginTop: 8,
-    alignSelf: 'flex-start',
+    marginRight: 8,
   },
-  cancelText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
+  actionText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
   empty: { textAlign: 'center', marginTop: 30, color: 'gray' },
   modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: 'white', padding: 20, borderRadius: 8, width: '90%' },

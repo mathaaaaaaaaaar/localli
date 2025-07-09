@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import Business from '../models/Business.js';
-import User from '../models/User.js';
 
 const router = express.Router();
 
@@ -18,7 +17,7 @@ const generateSlots = () => {
   return slots;
 };
 
-// ✅ GET available slots for a business on a date (keep this at the top)
+// ✅ GET available slots
 router.get('/:businessId/slots', authMiddleware, async (req, res) => {
   const { businessId } = req.params;
   const { date } = req.query;
@@ -40,11 +39,12 @@ router.get('/:businessId/slots', authMiddleware, async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error('❌ Error fetching slots:', err.message, err.stack);
+    console.error('❌ Error fetching slots:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
+// ✅ Book appointment
 router.post('/book', authMiddleware, async (req, res) => {
   const { businessId, date, slot } = req.body;
   const userId = req.user.id;
@@ -72,10 +72,10 @@ router.post('/book', authMiddleware, async (req, res) => {
   }
 });
 
+// ✅ Get my appointments (for customer)
 router.get('/my', authMiddleware, async (req, res) => {
   try {
-    const customerId = req.user.id;
-    const appointments = await Appointment.find({ customer: customerId })
+    const appointments = await Appointment.find({ customer: req.user.id })
       .populate('business', 'name address category')
       .sort({ date: 1, slot: 1 });
     res.json(appointments);
@@ -85,6 +85,7 @@ router.get('/my', authMiddleware, async (req, res) => {
   }
 });
 
+// ✅ Get appointments for a business (for owner)
 router.get('/business/:businessId', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findOne({ _id: req.params.businessId, owner: req.user.id });
@@ -101,27 +102,31 @@ router.get('/business/:businessId', authMiddleware, async (req, res) => {
   }
 });
 
-// DELETE and PUT routes come after the slots route
+// ✅ Cancel appointment
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const appt = await Appointment.findById(req.params.id);
     if (!appt) return res.status(404).json({ error: 'Appointment not found' });
 
-    if (
-      req.user.role === 'customer' && appt.customer.toString() !== req.user.id ||
-      req.user.role === 'owner'
-    ) {
+    const isCustomer = req.user.role === 'customer' && appt.customer.toString() === req.user.id;
+    const isOwner = req.user.role === 'owner' && (
+      await Business.exists({ _id: appt.business, owner: req.user.id })
+    );
+
+    if (isCustomer || isOwner) {
       await appt.deleteOne();
-      res.json({ message: 'Appointment deleted' });
-    } else {
-      res.status(403).json({ error: 'Not authorized' });
+      console.log(`✅ Appointment ${appt._id} cancelled by ${req.user.role}`);
+      return res.json({ message: 'Appointment deleted' });
     }
+
+    return res.status(403).json({ error: 'Not authorized' });
   } catch (err) {
     console.error('❌ Error deleting appointment:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
+// ✅ Reschedule appointment
 router.put('/:id', authMiddleware, async (req, res) => {
   const { newDate, newSlot } = req.body;
 
@@ -129,43 +134,51 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const appt = await Appointment.findById(req.params.id);
     if (!appt) return res.status(404).json({ error: 'Appointment not found' });
 
-    if (
-      req.user.role === 'customer' && appt.customer.toString() !== req.user.id ||
-      req.user.role === 'owner'
-    ) {
-      const exists = await Appointment.findOne({
-        business: appt.business,
-        date: newDate,
-        slot: newSlot,
-      });
-      if (exists) return res.status(409).json({ error: 'Slot already booked' });
+    const isCustomer = req.user.role === 'customer' && appt.customer.toString() === req.user.id;
+    const isOwner = req.user.role === 'owner' && (
+      await Business.exists({ _id: appt.business, owner: req.user.id })
+    );
 
-      appt.date = newDate;
-      appt.slot = newSlot;
-      await appt.save();
-      res.json({ message: 'Rescheduled successfully' });
-    } else {
-      res.status(403).json({ error: 'Not authorized' });
+    if (!(isCustomer || isOwner)) {
+      return res.status(403).json({ error: 'Not authorized' });
     }
+
+    const exists = await Appointment.findOne({
+      business: appt.business,
+      date: newDate,
+      slot: newSlot,
+    });
+
+    if (exists) {
+      return res.status(409).json({ error: 'Slot already booked' });
+    }
+
+    appt.date = newDate;
+    appt.slot = newSlot;
+    await appt.save();
+
+    console.log(`✅ Appointment ${appt._id} rescheduled to ${newDate} ${newSlot}`);
+    res.json({ message: 'Rescheduled successfully' });
   } catch (err) {
     console.error('❌ Error rescheduling appointment:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// ✅ Confirm an appointment (owner only) – keep this last
+// ✅ Confirm appointment (Owner only)
 router.post('/:id/confirm', authMiddleware, async (req, res) => {
   try {
     const appt = await Appointment.findById(req.params.id);
     if (!appt) return res.status(404).json({ error: 'Appointment not found' });
 
     const business = await Business.findById(appt.business);
-    if (business.owner.toString() !== req.user.id) {
+    if (!business || business.owner.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
     appt.confirmed = true;
     await appt.save();
+    console.log(`✅ Appointment ${appt._id} confirmed by owner`);
     res.json({ message: 'Appointment confirmed' });
   } catch (err) {
     console.error('❌ Error confirming appointment:', err);
