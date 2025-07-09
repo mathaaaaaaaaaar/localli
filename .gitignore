@@ -1,6 +1,7 @@
 # Root-level
 node_modules/
 package-lock.json
+.DS_Store
 
 # Frontend
 localli-app/node_modules/
