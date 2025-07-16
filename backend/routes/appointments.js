@@ -1,4 +1,3 @@
-// 📁 backend/routes/appointments.js
 import express from 'express';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
@@ -7,15 +6,33 @@ import Business from '../models/Business.js';
 
 const router = express.Router();
 
-const generateSlots = () => {
+// Generate slots based on business hours and slot duration
+function generateSlots(start, end, slotDuration, date, bookedSlots = []) {
   const slots = [];
-  for (let hour = 11; hour < 18; hour++) {
-    const start = `${hour.toString().padStart(2, '0')}:00`;
-    const end = `${(hour + 1).toString().padStart(2, '0')}:00`;
-    slots.push(`${start}-${end}`);
+
+  const startTime = new Date(`${date}T${start}`);
+  const endTime = new Date(`${date}T${end}`);
+  let current = new Date(startTime);
+
+  while (current < endTime) {
+    const next = new Date(current.getTime() + slotDuration * 60000);
+    if (next > endTime) break;
+
+    const slot = `${formatTime(current)}-${formatTime(next)}`;
+    slots.push({
+      time: slot,
+      available: !bookedSlots.includes(slot),
+    });
+
+    current = next;
   }
+
   return slots;
-};
+}
+
+function formatTime(date) {
+  return date.toTimeString().slice(0, 5);
+}
 
 // ✅ GET available slots
 router.get('/:businessId/slots', authMiddleware, async (req, res) => {
@@ -28,16 +45,16 @@ router.get('/:businessId/slots', authMiddleware, async (req, res) => {
   }
 
   try {
+    const business = await Business.findById(businessId);
+    if (!business) return res.status(404).json({ error: 'Business not found' });
+
+    const { start, end, slotDuration = 60 } = business.businessHours;
+
     const booked = await Appointment.find({ business: businessId, date });
     const bookedSlots = booked.map(a => a.slot);
 
-    const allSlots = generateSlots();
-    const result = allSlots.map(slot => ({
-      time: slot,
-      available: !bookedSlots.includes(slot),
-    }));
-
-    res.json(result);
+    const slots = generateSlots(start, end, slotDuration, date, bookedSlots);
+    res.json(slots);
   } catch (err) {
     console.error('❌ Error fetching slots:', err);
     res.status(500).json({ error: 'Server error' });

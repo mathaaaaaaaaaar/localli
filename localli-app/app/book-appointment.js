@@ -34,11 +34,11 @@ export default function BookAppointment() {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const res = await axios.get(`${API_BASE_URL}/appointments/${businessId}/slots`, {
+      const res = await axios.get(`${API_BASE_URL}/businesses/${businessId}/slots`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { date: selectedDate },
       });
-      setSlots(res.data || []); // handle array directly
+      setSlots(res.data || []);
     } catch (err) {
       console.error('❌ Failed to fetch slots:', err);
       Alert.alert('Error', 'Could not fetch slots');
@@ -93,6 +93,9 @@ export default function BookAppointment() {
         <ActivityIndicator size="large" />
       ) : (
         <View style={styles.slotsContainer}>
+          {slots.length === 0 && (
+            <Text style={{ textAlign: 'center', marginVertical: 20 }}>No slots available</Text>
+          )}
           {slots.map((slot) => (
             <TouchableOpacity
               key={slot.time}
@@ -140,6 +143,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    justifyContent: 'center',
   },
   slot: {
     padding: 12,

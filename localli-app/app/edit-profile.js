@@ -1,3 +1,4 @@
+// app/edit-profile.js
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -46,7 +47,7 @@ export default function EditProfile() {
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: [ImagePicker.MediaType.IMAGE],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,

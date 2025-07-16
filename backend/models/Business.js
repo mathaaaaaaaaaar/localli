@@ -30,10 +30,20 @@ const businessSchema = new mongoose.Schema({
     required: true,
     min: [0, 'Price must be a positive number'],
   },
+  businessHours: {
+    start: { type: String, required: true },         // Format: 'HH:mm'
+    end: { type: String, required: true },           // Format: 'HH:mm'
+    slotDuration: { type: Number, default: 60 },     // Duration in minutes
+  },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
   },
   bookings: [
     {

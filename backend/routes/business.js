@@ -1,7 +1,7 @@
 import express from 'express';
-
 import authMiddleware from '../middleware/authMiddleware.js';
 import Business from '../models/Business.js';
+import Appointment from '../models/Appointment.js';
 
 const router = express.Router();
 
@@ -12,30 +12,38 @@ router.get('/', async (req, res) => {
     const filter = {};
 
     if (search) {
-      filter.name = { $regex: search, $options: 'i' }; // case-insensitive search
+      filter.name = { $regex: search, $options: 'i' };
     }
 
     if (category) {
       filter.category = category;
     }
 
-    let sortOption = { createdAt: -1 }; // default to latest
+    let sortOption = { createdAt: -1 };
     if (sort === 'name_asc') sortOption = { name: 1 };
     if (sort === 'name_desc') sortOption = { name: -1 };
     if (sort === 'latest') sortOption = { createdAt: -1 };
 
     const businesses = await Business.find(filter)
       .populate('owner', 'email')
-      .sort(sortOption);
+      .sort(sortOption)
+      .lean();
 
-    res.json(businesses);
+    const enhancedBusinesses = await Promise.all(
+      businesses.map(async (b) => {
+        const totalAppointments = await Appointment.countDocuments({ business: b._id });
+        return { ...b, totalAppointments };
+      })
+    );
+
+    res.json(enhancedBusinesses);
   } catch (err) {
     console.error('❌ Error fetching businesses:', err.message);
     res.status(500).json({ message: 'Error fetching businesses' });
   }
 });
 
-// ✅ GET single business by ID (protected)
+// ✅ GET single business by ID
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id).populate('owner', 'email');
@@ -47,14 +55,13 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ POST create business (only owners)
+// ✅ Create business (owner only)
 router.post('/', authMiddleware, async (req, res) => {
   if (req.user.role !== 'owner') {
-    console.warn('🚫 Rejected: Not an owner');
     return res.status(403).json({ message: 'Only owners can create businesses' });
   }
 
-  const { name, description, category, address, phone, price } = req.body;
+  const { name, description, category, address, phone, price, businessHours } = req.body;
 
   try {
     const business = new Business({
@@ -64,6 +71,7 @@ router.post('/', authMiddleware, async (req, res) => {
       address,
       phone,
       price,
+      businessHours,
       owner: req.user.id,
     });
 
@@ -75,7 +83,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ PUT update business (only owner who owns the business)
+// ✅ Update business
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
@@ -94,7 +102,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ DELETE business (only owner who owns the business)
+// ✅ Delete business
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
@@ -112,10 +120,9 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ POST book a service (only customers)
+// ✅ [LEGACY] Book service route (not required if using /appointments flow)
 router.post('/:id/book', authMiddleware, async (req, res) => {
   if (req.user.role !== 'customer') {
-    console.warn('🚫 Rejected: Not a customer');
     return res.status(403).json({ message: 'Only customers can book services' });
   }
 
@@ -140,34 +147,23 @@ router.post('/:id/book', authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ GET bookings for a business (role-based visibility)
+// ✅ GET bookings (owner only – legacy if using appointments)
 router.get('/:id/bookings', authMiddleware, async (req, res) => {
   try {
-    const business = await Business.findById(req.params.id).populate('bookings.customer', 'name email');
+    const business = await Business.findById(req.params.id)
+      .populate('bookings.customer', 'name email');
+
     if (!business) return res.status(404).json({ message: 'Business not found' });
 
-    if (req.user.role === 'owner') {
-      // Owners see all bookings
-      return res.json(business.bookings);
-    } else if (req.user.role === 'customer') {
-      // Customers see only available times
-      const bookedDates = business.bookings.map((booking) => booking.date);
-      const availableTimes = generateAvailableTimes(bookedDates); // Implement logic to generate available times
-      return res.json({ availableTimes });
-    } else {
+    if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' });
     }
+
+    res.json(business.bookings);
   } catch (err) {
     console.error('❌ Error fetching bookings:', err.message);
     res.status(500).json({ message: 'Error fetching bookings' });
   }
 });
-
-// Helper function to generate available times
-function generateAvailableTimes(bookedDates) {
-  const allTimes = []; // Define all possible times (e.g., 9 AM to 5 PM)
-  const availableTimes = allTimes.filter((time) => !bookedDates.includes(time));
-  return availableTimes;
-}
 
 export default router;

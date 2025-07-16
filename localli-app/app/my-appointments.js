@@ -118,35 +118,34 @@ export default function MyAppointments() {
     }
   };
 
-const showRescheduleModal = async (appt) => {
-  if (!appt.business?._id) {
-    console.error('❌ No business ID found in appointment');
-    return Toast.show({ type: 'error', text1: 'Invalid appointment data' });
-  }
+  const showRescheduleModal = async (appt) => {
+    if (!appt.business?._id) {
+      console.error('❌ No business ID found in appointment');
+      return Toast.show({ type: 'error', text1: 'Invalid appointment data' });
+    }
 
-  const parsedDate = moment(appt.date).format('YYYY-MM-DD'); // ✅ Fix
+    const parsedDate = moment(appt.date).format('YYYY-MM-DD');
 
-  setSelectedAppt({ ...appt, newSlot: appt.slot });
-  setNewDate(new Date(appt.date));
-  setShowModal(true);
+    setSelectedAppt({ ...appt, newSlot: appt.slot });
+    setNewDate(new Date(appt.date));
+    setShowModal(true);
 
-  // ✅ Pass properly formatted date string
-  fetchAvailableSlots(appt.business._id, parsedDate);
-};
+    fetchAvailableSlots(appt.business._id, parsedDate);
+  };
 
-const fetchAvailableSlots = async (businessId, date) => {
-  try {
-    const token = await AsyncStorage.getItem('userToken');
-    const formattedDate = moment(date).format('YYYY-MM-DD'); // ✅ FIX
-    const res = await axios.get(`${API_BASE_URL}/appointments/${businessId}/slots`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { date: formattedDate },
-    });
-    setAvailableSlots(res.data);
-  } catch (err) {
-    console.error('❌ Error fetching slots:', err);
-  }
-};
+  const fetchAvailableSlots = async (businessId, date) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const formattedDate = moment(date).format('YYYY-MM-DD');
+      const res = await axios.get(`${API_BASE_URL}/appointments/${businessId}/slots`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { date: formattedDate },
+      });
+      setAvailableSlots(res.data);
+    } catch (err) {
+      console.error('❌ Error fetching slots:', err);
+    }
+  };
 
   const rescheduleAppointment = async () => {
     if (!selectedAppt) return;
