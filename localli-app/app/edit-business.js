@@ -20,6 +20,8 @@ const timeOptions = [
   '18:00', '19:00', '20:00',
 ];
 
+const slotDurations = ['15', '30', '45', '60', '90', '120'];
+
 export default function EditBusiness() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -31,6 +33,7 @@ export default function EditBusiness() {
   const [loading, setLoading] = useState(false);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [slotDuration, setSlotDuration] = useState('');
 
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -56,6 +59,7 @@ export default function EditBusiness() {
       setPrice(b.price ? `$${parseFloat(b.price).toFixed(2)}` : '');
       setStartTime(b.businessHours?.start?.slice(0, 5) || '');
       setEndTime(b.businessHours?.end?.slice(0, 5) || '');
+      setSlotDuration(b.businessHours?.slotDuration?.toString() || '');
     } catch (err) {
       console.error('❌ Error fetching business:', err.message);
       Alert.alert('Error', 'Could not load business data');
@@ -63,7 +67,7 @@ export default function EditBusiness() {
   };
 
   const handleUpdate = async () => {
-    if (!name || !description || !category || !address || price === '') {
+    if (!name || !description || !category || !address || price === '' || !slotDuration) {
       Alert.alert('Missing Info', 'Please fill all fields');
       return;
     }
@@ -74,34 +78,43 @@ export default function EditBusiness() {
       return;
     }
 
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
-      await axios.put(
-        `${API_BASE_URL}/businesses/${id}`,
-        {
-          name,
-          description,
-          category,
-          address,
-          phone,
-          active,
-          price: numericPrice,
-          businessHours: {
-            start: `${startTime}:00`,
-            end: `${endTime}:00`
+    Alert.alert('Confirm Update', 'Are you sure you want to save changes?', [
+      { text: 'Cancel' },
+      {
+        text: 'Yes',
+        onPress: async () => {
+          try {
+            setLoading(true);
+            const token = await AsyncStorage.getItem('userToken');
+            await axios.put(
+              `${API_BASE_URL}/businesses/${id}`,
+              {
+                name,
+                description,
+                category,
+                address,
+                phone,
+                active,
+                price: numericPrice,
+                businessHours: {
+                  start: `${startTime}:00`,
+                  end: `${endTime}:00`,
+                  slotDuration: parseInt(slotDuration),
+                }
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            Alert.alert('Success', 'Business updated successfully');
+            router.replace('/home');
+          } catch (err) {
+            console.error('❌ Error updating business:', err.message);
+            Alert.alert('Error', 'Failed to update business');
+          } finally {
+            setLoading(false);
           }
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      Alert.alert('Success', 'Business updated successfully');
-      router.replace('/home');
-    } catch (err) {
-      console.error('❌ Error updating business:', err.message);
-      Alert.alert('Error', 'Failed to update business');
-    } finally {
-      setLoading(false);
-    }
+        }
+      }
+    ]);
   };
 
   return (
@@ -161,13 +174,26 @@ export default function EditBusiness() {
           </View>
         </View>
 
+        <Text style={styles.label}>Slot Duration (minutes)</Text>
+        <View style={styles.pickerWrapper}>
+          <Picker selectedValue={slotDuration} onValueChange={setSlotDuration}>
+            <Picker.Item label="Select Duration" value="" />
+            {slotDurations.map(d => (
+              <Picker.Item key={d} label={`${d} minutes`} value={d} />
+            ))}
+          </Picker>
+        </View>
+
         <View style={styles.switchRow}>
           <Text style={styles.label}>Business Status</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
             <Text style={{ marginRight: 10 }}>Inactive</Text>
             <Switch value={active} onValueChange={setActive} />
             <Text style={{ marginLeft: 10 }}>Active</Text>
           </View>
+          <Text style={{ color: active ? 'green' : 'red', fontWeight: 'bold', marginTop: 5 }}>
+            {active ? '🟢 Currently Active' : '🔴 Currently Inactive'}
+          </Text>
         </View>
 
         <Button title={loading ? 'Updating...' : 'Update Business'} onPress={handleUpdate} disabled={loading} />

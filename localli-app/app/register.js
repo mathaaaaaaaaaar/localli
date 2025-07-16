@@ -125,7 +125,11 @@ export default function Register() {
         </Picker>
       </View>
 
-      <Button title="Register" onPress={handleRegister} />
+      <Button
+        title="Register"
+        onPress={handleRegister}
+        disabled={!name || !email || !password}
+      />
     </View>
   );
 }
@@ -161,6 +165,7 @@ const styles = StyleSheet.create({
   avatarPicker: {
     alignItems: 'center',
     marginBottom: 20,
+    padding: 10,
   },
   avatarImage: {
     width: 100,

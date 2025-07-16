@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -18,22 +19,8 @@ import { Picker } from '@react-native-picker/picker';
 
 import API_BASE_URL from '../constants/constants';
 
-const categories = [
-  'Salon',
-  'Spa',
-  'Barbershop',
-  'Clinic',
-  'Gym',
-  'Dentist',
-  'Massage',
-];
-
-const timeOptions = [
-  '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00',
-  '18:00', '19:00', '20:00',
-];
-
+const categories = ['Salon', 'Spa', 'Barbershop', 'Clinic', 'Gym', 'Dentist', 'Massage'];
+const timeOptions = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 const slotDurations = ['15', '30', '45', '60', '90', '120'];
 
 export default function CreateBusiness() {
@@ -46,6 +33,7 @@ export default function CreateBusiness() {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [slotDuration, setSlotDuration] = useState('');
+  const [isActive, setIsActive] = useState(true);
 
   const router = useRouter();
 
@@ -70,6 +58,7 @@ export default function CreateBusiness() {
         address,
         phone,
         price: numeric,
+        active: isActive,
         businessHours: {
           start: `${startTime}:00`,
           end: `${endTime}:00`,
@@ -77,7 +66,7 @@ export default function CreateBusiness() {
         },
       };
 
-      const res = await axios.post(`${API_BASE_URL}/businesses`, payload, {
+      await axios.post(`${API_BASE_URL}/businesses`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -91,15 +80,15 @@ export default function CreateBusiness() {
 
   const handlePriceChange = (val) => {
     const numeric = val.replace(/[^0-9.]/g, '');
-    if (!numeric) {
-      setPrice('');
-    } else {
-      setPrice(`$${numeric}`);
-    }
+    setPrice(numeric ? `$${numeric}` : '');
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={100}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={100}
+    >
       <ScrollView keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Create New Business 🏢</Text>
 
@@ -152,6 +141,18 @@ export default function CreateBusiness() {
           </Picker>
         </View>
 
+        {/* 🔴 Business Status */}
+        <Text style={styles.label}>Business Status</Text>
+        <View style={styles.toggleRow}>
+          <Text style={{ fontWeight: '500' }}>{isActive ? '🟢 Active' : '🔴 Inactive'}</Text>
+          <Switch
+            value={isActive}
+            onValueChange={(val) => setIsActive(val)}
+            trackColor={{ false: '#aaa', true: '#4caf50' }}
+            thumbColor="#fff"
+          />
+        </View>
+
         <Button title="Submit" onPress={handleSubmit} />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -192,10 +193,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 10,
   },
-  picker: {
-    height: 50,
-    width: '100%',
-  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -208,5 +205,17 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 8,
     backgroundColor: '#fff',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 20,
   },
 });

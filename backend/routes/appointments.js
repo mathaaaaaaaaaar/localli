@@ -48,7 +48,12 @@ router.get('/:businessId/slots', authMiddleware, async (req, res) => {
     const business = await Business.findById(businessId);
     if (!business) return res.status(404).json({ error: 'Business not found' });
 
-    const { start, end, slotDuration = 60 } = business.businessHours;
+    const hours = business.businessHours;
+    if (!hours || !hours.start || !hours.end) {
+      return res.status(400).json({ error: 'Business hours not configured' });
+    }
+
+    const { start, end, slotDuration = 60 } = hours;
 
     const booked = await Appointment.find({ business: businessId, date });
     const bookedSlots = booked.map(a => a.slot);

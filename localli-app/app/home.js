@@ -204,23 +204,31 @@ export default function Home() {
         </TouchableOpacity>
       )}
 
-      {/* 🔃 Sorting */}
+      {/* 🔃 Fancy Sorting with Equal Width */}
       <View style={styles.sortRow}>
-        <Button
-          title="Sort A-Z"
-          color={sortOption === 'az' ? '#1976d2' : '#888'}
-          onPress={() => setSortOption('az')}
-        />
-        <Button
-          title="Low-High"
-          color={sortOption === 'priceLow' ? '#1976d2' : '#888'}
-          onPress={() => setSortOption('priceLow')}
-        />
-        <Button
-          title="High-Low"
-          color={sortOption === 'priceHigh' ? '#1976d2' : '#888'}
-          onPress={() => setSortOption('priceHigh')}
-        />
+        {[
+          { key: 'az', label: '🔤 A-Z' },
+          { key: 'priceLow', label: '📉 Price Low' },
+          { key: 'priceHigh', label: '📈 Price High' },
+        ].map(({ key, label }) => (
+          <TouchableOpacity
+            key={key}
+            style={[
+              styles.sortButton,
+              sortOption === key && styles.activeSortButton,
+            ]}
+            onPress={() => setSortOption(key)}
+          >
+            <Text
+              style={[
+                styles.sortButtonText,
+                sortOption === key && styles.activeSortButtonText,
+              ]}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* 🏪 Business List */}
@@ -323,4 +331,32 @@ const styles = StyleSheet.create({
   bookButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   centered: { justifyContent: 'center', alignItems: 'center' },
+
+  sortRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginBottom: 10,
+  gap: 8, // Optional if you're using newer RN version
+},
+sortButton: {
+  flex: 1,
+  paddingVertical: 10,
+  alignItems: 'center',
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  backgroundColor: '#fff',
+},
+activeSortButton: {
+  backgroundColor: '#1976d2',
+  borderColor: '#1976d2',
+},
+sortButtonText: {
+  fontSize: 13,
+  color: '#333',
+  fontWeight: '500',
+},
+activeSortButtonText: {
+  color: '#fff',
+}
 });

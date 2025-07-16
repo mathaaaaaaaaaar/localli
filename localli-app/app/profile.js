@@ -44,18 +44,18 @@ export default function EditProfile() {
     fetchProfile();
   }, []);
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
+const pickImage = async () => {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.5,
+  });
 
-    if (!result.canceled) {
-      setAvatar(result.assets[0].uri);
-    }
-  };
+  if (!result.canceled) {
+    setAvatar(result.assets[0].uri);
+  }
+};
 
 const handleSave = async () => {
   try {
