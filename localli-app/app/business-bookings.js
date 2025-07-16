@@ -118,25 +118,32 @@ const confirmAppointment = async (id) => {
     }
   };
 
-  const showRescheduleModal = async (appt) => {
-    setSelectedAppt({ ...appt, newSlot: appt.slot });
-    setNewDate(new Date(appt.date));
-    setShowModal(true);
-    fetchAvailableSlots(appt.business._id, appt.date);
-  };
+const showRescheduleModal = async (appt) => {
+  setSelectedAppt({ ...appt, newSlot: appt.slot });
+  setNewDate(new Date(appt.date));
+  setShowModal(true);
 
-  const fetchAvailableSlots = async (businessId, date) => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const res = await axios.get(`${API_BASE_URL}/appointments/${businessId}/slots`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { date },
-      });
-      setAvailableSlots(res.data);
-    } catch (err) {
-      console.error('❌ Error fetching slots:', err);
-    }
-  };
+  // ✅ Fallback logic: whether appt.business is an object or just an ID string
+  const businessId =
+    typeof appt.business === 'object' ? appt.business._id : appt.business;
+
+  const formattedDate = moment(appt.date).format('YYYY-MM-DD');
+  fetchAvailableSlots(businessId, formattedDate);
+};
+
+const fetchAvailableSlots = async (businessId, date) => {
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    const formattedDate = moment(date).format('YYYY-MM-DD'); // ✅ FIX
+    const res = await axios.get(`${API_BASE_URL}/appointments/${businessId}/slots`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { date: formattedDate },
+    });
+    setAvailableSlots(res.data);
+  } catch (err) {
+    console.error('❌ Error fetching slots:', err);
+  }
+};
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
@@ -183,12 +190,16 @@ const confirmAppointment = async (id) => {
                 display="default"
                 value={newDate}
                 onChange={(event, selected) => {
-                  setShowPicker(false);
-                  if (selected) {
-                    setNewDate(selected);
-                    fetchAvailableSlots(selectedAppt.business._id, moment(selected).format('YYYY-MM-DD'));
-                  }
-                }}
+                setShowPicker(false);
+                if (selected) {
+                  setNewDate(selected);
+                  const businessId =
+                    typeof selectedAppt.business === 'object'
+                      ? selectedAppt.business._id
+                      : selectedAppt.business;
+                  fetchAvailableSlots(businessId, moment(selected).format('YYYY-MM-DD'));
+                }
+              }}
               />
             )}
             <View style={styles.slotsContainer}>
