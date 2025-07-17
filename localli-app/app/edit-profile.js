@@ -15,11 +15,13 @@ import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import API_BASE_URL from '../constants/constants';
+import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
 export default function EditProfile() {
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
   const [password, setPassword] = useState('');
+  const [localImage, setLocalImage] = useState('');
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -32,6 +34,7 @@ export default function EditProfile() {
         });
         setName(res.data.name);
         setAvatar(res.data.avatar);
+        setLocalImage(res.data.avatar);
       } catch (err) {
         console.error('❌ Error loading profile:', err);
         Alert.alert('Error', 'Failed to load profile.');
@@ -42,30 +45,37 @@ export default function EditProfile() {
     fetchProfile();
   }, []);
 
-const pickImage = async () => {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.5,
-  });
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
 
-  if (!result.canceled) {
-    setAvatar(result.assets[0].uri);
-  }
-};
+    if (!result.canceled) {
+      setLocalImage(result.assets[0].uri);
+    }
+  };
 
   const handleSave = async () => {
     try {
+      setLoading(true);
       const token = await AsyncStorage.getItem('userToken');
-      const body = { name, avatar };
+      let uploadedAvatar = avatar;
+
+      // 👇 Upload new avatar if selected
+      if (localImage && localImage !== avatar) {
+        uploadedAvatar = await uploadToCloudinary(localImage);
+      }
+
+      const body = { name, avatar: uploadedAvatar };
       if (password) body.password = password;
 
       const response = await axios.put(`${API_BASE_URL}/user/profile`, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // ✅ Save the new token returned by backend
       const newToken = response.data.token;
       await AsyncStorage.setItem('userToken', newToken);
 
@@ -74,6 +84,8 @@ const pickImage = async () => {
     } catch (err) {
       console.error('❌ Update error:', err);
       Alert.alert('Error', 'Failed to update profile');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,7 +135,7 @@ const pickImage = async () => {
 
       <TouchableOpacity onPress={pickImage}>
         <Image
-          source={{ uri: avatar || 'https://i.pravatar.cc/100' }}
+          source={{ uri: localImage || 'https://i.pravatar.cc/100' }}
           style={styles.avatar}
         />
         <Text style={styles.pickText}>Change Avatar</Text>

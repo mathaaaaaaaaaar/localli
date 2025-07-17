@@ -21,11 +21,17 @@ router.get('/profile', authMiddleware, async (req, res) => {
 // ✅ PUT /user/profile (update name/avatar/password + return new token)
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
+    const { name, avatar, password } = req.body;
+
+    if (!name && !avatar && !password) {
+      return res.status(400).json({ message: 'No update data provided' });
+    }
+
     const updates = {};
-    if (req.body.name) updates.name = req.body.name;
-    if (req.body.avatar) updates.avatar = req.body.avatar;
-    if (req.body.password) {
-      updates.password = await bcrypt.hash(req.body.password, 10);
+    if (name) updates.name = name;
+    if (avatar) updates.avatar = avatar;
+    if (password) {
+      updates.password = await bcrypt.hash(password, 10);
     }
 
     const updatedUser = await User.findByIdAndUpdate(req.user.id, updates, {
@@ -36,7 +42,6 @@ router.put('/profile', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // ✅ Create new JWT token with updated user data
     const token = jwt.sign({
       id: updatedUser._id,
       name: updatedUser.name,
@@ -47,7 +52,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
 
     res.json({ token });
   } catch (err) {
-    console.error('❌ Update profile error:', err);
+    console.error('❌ Update profile error:', err.message);
     res.status(500).json({ message: 'Error updating profile' });
   }
 });

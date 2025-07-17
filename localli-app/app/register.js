@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
 import API_BASE_URL from '../constants/constants';
+import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -49,12 +50,17 @@ export default function Register() {
     }
 
     try {
+      let uploadedAvatar = '';
+      if (avatar) {
+        uploadedAvatar = await uploadToCloudinary(avatar);
+      }
+
       await axios.post(`${API_BASE_URL}/auth/register`, {
         name,
         email,
         password,
         role,
-        avatar,
+        avatar: uploadedAvatar,
       }, {
         headers: {
           'Content-Type': 'application/json',
