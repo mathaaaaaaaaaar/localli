@@ -1,3 +1,5 @@
+// EditProfile.js
+// ✅ With upload logs, better error handling, safer UX
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -15,11 +17,13 @@ import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import API_BASE_URL from '../constants/constants';
+import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
 export default function EditProfile() {
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
   const [password, setPassword] = useState('');
+  const [localImage, setLocalImage] = useState('');
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -32,6 +36,8 @@ export default function EditProfile() {
         });
         setName(res.data.name);
         setAvatar(res.data.avatar);
+        setLocalImage(res.data.avatar);
+        console.log('👤 Profile loaded:', res.data);
       } catch (err) {
         console.error('❌ Error loading profile:', err);
         Alert.alert('Error', 'Failed to load profile.');
@@ -42,38 +48,50 @@ export default function EditProfile() {
     fetchProfile();
   }, []);
 
-const pickImage = async () => {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.5,
-  });
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
 
-  if (!result.canceled) {
-    setAvatar(result.assets[0].uri);
-  }
-};
+    if (!result.canceled) {
+      console.log('🖼️ New local image selected:', result.assets[0].uri);
+      setLocalImage(result.assets[0].uri);
+    }
+  };
 
   const handleSave = async () => {
     try {
+      setLoading(true);
       const token = await AsyncStorage.getItem('userToken');
-      const body = { name, avatar };
+      let uploadedAvatar = avatar;
+
+      if (localImage && localImage !== avatar) {
+        console.log('☁️ Uploading new avatar to Cloudinary...');
+        uploadedAvatar = await uploadToCloudinary(localImage);
+        console.log('✅ Cloudinary URL:', uploadedAvatar);
+      }
+
+      const body = { name, avatar: uploadedAvatar };
       if (password) body.password = password;
 
       const response = await axios.put(`${API_BASE_URL}/user/profile`, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // ✅ Save the new token returned by backend
       const newToken = response.data.token;
       await AsyncStorage.setItem('userToken', newToken);
 
-      Alert.alert('Success', 'Profile updated!');
+      Alert.alert('✅ Success', 'Profile updated!');
       router.replace('/home');
     } catch (err) {
       console.error('❌ Update error:', err);
-      Alert.alert('Error', 'Failed to update profile');
+      const msg = err.response?.data?.message || err.response?.data || 'Something went wrong';
+      Alert.alert('Error', typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,7 +141,7 @@ const pickImage = async () => {
 
       <TouchableOpacity onPress={pickImage}>
         <Image
-          source={{ uri: avatar || 'https://i.pravatar.cc/100' }}
+          source={{ uri: localImage || 'https://i.pravatar.cc/100' }}
           style={styles.avatar}
         />
         <Text style={styles.pickText}>Change Avatar</Text>
@@ -144,7 +162,12 @@ const pickImage = async () => {
         onChangeText={setPassword}
       />
 
-      <Button title="Save Changes" onPress={handleSave} disabled={loading} />
+      {loading ? (
+        <ActivityIndicator size="large" color="#1976d2" />
+      ) : (
+        <Button title="Save Changes" onPress={handleSave} disabled={loading} />
+      )}
+
       <View style={{ marginTop: 20 }}>
         <Button title="Logout" color="orange" onPress={handleLogout} />
       </View>

@@ -8,7 +8,7 @@ const router = express.Router();
 
 // ✅ Register
 router.post('/register', async (req, res) => {
-  const { name, email, password, role = 'customer' } = req.body;
+const { name, email, password, role = 'customer', avatar } = req.body;
 
   try {
     const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -21,6 +21,7 @@ router.post('/register', async (req, res) => {
       email: email.toLowerCase(),
       password: hashedPassword,
       role,
+      avatar,
     });
 
     await newUser.save();

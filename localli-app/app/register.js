@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, Button, StyleSheet, Alert, Image, TouchableOpacity
+  View, Text, TextInput, Button, StyleSheet, Alert, Image, TouchableOpacity, ActivityIndicator
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
@@ -9,21 +9,24 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
 import API_BASE_URL from '../constants/constants';
+import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('customer'); // default to customer
+  const [role, setRole] = useState('customer');
   const [avatar, setAvatar] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   const router = useRouter();
 
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1,
+      quality: 0.7,
     });
 
     if (!result.canceled) {
@@ -49,31 +52,41 @@ export default function Register() {
     }
 
     try {
+      setLoading(true);
+      let uploadedAvatar = '';
+
+      if (avatar) {
+        try {
+          uploadedAvatar = await uploadToCloudinary(avatar);
+          console.log('✅ Avatar uploaded URL:', uploadedAvatar);
+        } catch (uploadErr) {
+          console.error('❌ Cloudinary upload failed:', uploadErr);
+          Alert.alert('Upload Error', 'Failed to upload avatar image.');
+          return;
+        }
+      }
+
       await axios.post(`${API_BASE_URL}/auth/register`, {
         name,
         email,
         password,
         role,
-        avatar,
+        avatar: uploadedAvatar,
       }, {
         headers: {
           'Content-Type': 'application/json',
         }
       });
 
-      // Auto-login
-      const res = await axios.post(`${API_BASE_URL}/auth/login`, {
-        email,
-        password,
-      });
-
-      const token = res.data.token;
-      await AsyncStorage.setItem('userToken', token);
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
+      await AsyncStorage.setItem('userToken', res.data.token);
       router.replace('/home');
     } catch (err) {
       console.error('❌ Registration Error:', err);
       const msg = err.response?.data?.message || err.response?.data || 'Something went wrong';
       Alert.alert('Registration failed', typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -125,11 +138,15 @@ export default function Register() {
         </Picker>
       </View>
 
-      <Button
-        title="Register"
-        onPress={handleRegister}
-        disabled={!name || !email || !password}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 20 }} />
+      ) : (
+        <Button
+          title="Register"
+          onPress={handleRegister}
+          disabled={!name || !email || !password}
+        />
+      )}
     </View>
   );
 }
