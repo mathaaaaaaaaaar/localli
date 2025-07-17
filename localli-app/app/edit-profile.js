@@ -1,3 +1,5 @@
+// EditProfile.js
+// ✅ With upload logs, better error handling, safer UX
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -35,6 +37,7 @@ export default function EditProfile() {
         setName(res.data.name);
         setAvatar(res.data.avatar);
         setLocalImage(res.data.avatar);
+        console.log('👤 Profile loaded:', res.data);
       } catch (err) {
         console.error('❌ Error loading profile:', err);
         Alert.alert('Error', 'Failed to load profile.');
@@ -54,6 +57,7 @@ export default function EditProfile() {
     });
 
     if (!result.canceled) {
+      console.log('🖼️ New local image selected:', result.assets[0].uri);
       setLocalImage(result.assets[0].uri);
     }
   };
@@ -64,9 +68,10 @@ export default function EditProfile() {
       const token = await AsyncStorage.getItem('userToken');
       let uploadedAvatar = avatar;
 
-      // 👇 Upload new avatar if selected
       if (localImage && localImage !== avatar) {
+        console.log('☁️ Uploading new avatar to Cloudinary...');
         uploadedAvatar = await uploadToCloudinary(localImage);
+        console.log('✅ Cloudinary URL:', uploadedAvatar);
       }
 
       const body = { name, avatar: uploadedAvatar };
@@ -79,11 +84,12 @@ export default function EditProfile() {
       const newToken = response.data.token;
       await AsyncStorage.setItem('userToken', newToken);
 
-      Alert.alert('Success', 'Profile updated!');
+      Alert.alert('✅ Success', 'Profile updated!');
       router.replace('/home');
     } catch (err) {
       console.error('❌ Update error:', err);
-      Alert.alert('Error', 'Failed to update profile');
+      const msg = err.response?.data?.message || err.response?.data || 'Something went wrong';
+      Alert.alert('Error', typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setLoading(false);
     }
@@ -156,7 +162,12 @@ export default function EditProfile() {
         onChangeText={setPassword}
       />
 
-      <Button title="Save Changes" onPress={handleSave} disabled={loading} />
+      {loading ? (
+        <ActivityIndicator size="large" color="#1976d2" />
+      ) : (
+        <Button title="Save Changes" onPress={handleSave} disabled={loading} />
+      )}
+
       <View style={{ marginTop: 20 }}>
         <Button title="Logout" color="orange" onPress={handleLogout} />
       </View>

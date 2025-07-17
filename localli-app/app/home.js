@@ -127,11 +127,12 @@ export default function Home() {
     router.push(userRole === 'owner' ? '/business-bookings' : '/my-appointments');
   };
 
-  const filteredBusinesses = businesses
-    .filter(b =>
-      (!selectedCategory || b.category === selectedCategory) &&
-      b.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+ const filteredBusinesses = businesses
+  .filter(b =>
+    (!selectedCategory || b.category === selectedCategory) &&
+    b.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    (userRole === 'owner' || b.active)  // <--- ✨ Hide inactive for customers
+  )
     .sort((a, b) => {
       if (sortOption === 'az') return a.name.localeCompare(b.name);
       if (sortOption === 'priceLow') return (a.price || 0) - (b.price || 0);
