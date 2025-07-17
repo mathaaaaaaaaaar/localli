@@ -17,7 +17,6 @@ import { useRouter } from 'expo-router';
 import API_BASE_URL from '../constants/constants';
 
 export default function EditProfile() {
-  const [user, setUser] = useState(null);
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +30,6 @@ export default function EditProfile() {
         const res = await axios.get(`${API_BASE_URL}/user/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setUser(res.data);
         setName(res.data.name);
         setAvatar(res.data.avatar);
       } catch (err) {
@@ -57,26 +55,27 @@ const pickImage = async () => {
   }
 };
 
-const handleSave = async () => {
-  try {
-    const token = await AsyncStorage.getItem('userToken');
-    const body = { name, avatar };
-    if (password) body.password = password;
+  const handleSave = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const body = { name, avatar };
+      if (password) body.password = password;
 
-    const res = await axios.put(`${API_BASE_URL}/user/profile`, body, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      const response = await axios.put(`${API_BASE_URL}/user/profile`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    const newToken = res.data.token;
-    await AsyncStorage.setItem('userToken', newToken);
+      // ✅ Save the new token returned by backend
+      const newToken = response.data.token;
+      await AsyncStorage.setItem('userToken', newToken);
 
-    Alert.alert('Success', 'Profile updated!');
-    router.replace('/profile');
-  } catch (err) {
-    console.error('❌ Update error:', err);
-    Alert.alert('Error', 'Failed to update profile');
-  }
-};
+      Alert.alert('Success', 'Profile updated!');
+      router.replace('/home');
+    } catch (err) {
+      console.error('❌ Update error:', err);
+      Alert.alert('Error', 'Failed to update profile');
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure?', [
@@ -145,7 +144,7 @@ const handleSave = async () => {
         onChangeText={setPassword}
       />
 
-      <Button title="Save Changes" onPress={handleSave} />
+      <Button title="Save Changes" onPress={handleSave} disabled={loading} />
       <View style={{ marginTop: 20 }}>
         <Button title="Logout" color="orange" onPress={handleLogout} />
       </View>

@@ -1,4 +1,3 @@
-// 📁 app/my-appointments.js
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -31,9 +30,7 @@ export default function MyAppointments() {
   const [showPicker, setShowPicker] = useState(false);
   const [availableSlots, setAvailableSlots] = useState([]);
 
-  useEffect(() => {
-    init();
-  }, []);
+  useEffect(() => { init(); }, []);
 
   const init = async () => {
     try {
@@ -83,7 +80,7 @@ export default function MyAppointments() {
   };
 
   const cancelAppointment = (id) => {
-    Alert.alert('Cancel Appointment', 'Are you sure you want to cancel this appointment?', [
+    Alert.alert('Cancel Appointment', 'Are you sure?', [
       { text: 'No' },
       {
         text: 'Yes',
@@ -97,7 +94,7 @@ export default function MyAppointments() {
             init();
           } catch (err) {
             console.error('❌ Cancel error:', err);
-            Alert.alert('Error', 'Failed to cancel appointment');
+            Alert.alert('Error', 'Failed to cancel');
           }
         },
       },
@@ -110,53 +107,46 @@ export default function MyAppointments() {
       await axios.post(`${API_BASE_URL}/appointments/${id}/confirm`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      Toast.show({ type: 'success', text1: 'Appointment confirmed' });
+      Toast.show({ type: 'success', text1: 'Confirmed successfully' });
       init();
     } catch (err) {
       console.error('❌ Confirm error:', err);
-      Toast.show({ type: 'error', text1: 'Failed to confirm appointment' });
+      Toast.show({ type: 'error', text1: 'Confirmation failed' });
     }
   };
 
-const showRescheduleModal = async (appt) => {
-  if (!appt.business?._id) {
-    console.error('❌ No business ID found in appointment');
-    return Toast.show({ type: 'error', text1: 'Invalid appointment data' });
-  }
+  const showRescheduleModal = async (appt) => {
+    const parsedDate = moment(appt.date).format('YYYY-MM-DD');
+    setSelectedAppt({ ...appt, newSlot: appt.slot });
+    setNewDate(new Date(appt.date));
+    setShowModal(true);
+    fetchAvailableSlots(appt.business._id, parsedDate);
+  };
 
-  const parsedDate = moment(appt.date).format('YYYY-MM-DD'); // ✅ Fix
-
-  setSelectedAppt({ ...appt, newSlot: appt.slot });
-  setNewDate(new Date(appt.date));
-  setShowModal(true);
-
-  // ✅ Pass properly formatted date string
-  fetchAvailableSlots(appt.business._id, parsedDate);
-};
-
-const fetchAvailableSlots = async (businessId, date) => {
-  try {
-    const token = await AsyncStorage.getItem('userToken');
-    const formattedDate = moment(date).format('YYYY-MM-DD'); // ✅ FIX
-    const res = await axios.get(`${API_BASE_URL}/appointments/${businessId}/slots`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { date: formattedDate },
-    });
-    setAvailableSlots(res.data);
-  } catch (err) {
-    console.error('❌ Error fetching slots:', err);
-  }
-};
+  const fetchAvailableSlots = async (businessId, date) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const formattedDate = moment(date).format('YYYY-MM-DD');
+      const res = await axios.get(`${API_BASE_URL}/appointments/${businessId}/slots`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { date: formattedDate },
+      });
+      setAvailableSlots(res.data);
+    } catch (err) {
+      console.error('❌ Error fetching slots:', err);
+    }
+  };
 
   const rescheduleAppointment = async () => {
     if (!selectedAppt) return;
     try {
       const token = await AsyncStorage.getItem('userToken');
-      await axios.put(
-        `${API_BASE_URL}/appointments/${selectedAppt._id}`,
-        { newDate: moment(newDate).format('YYYY-MM-DD'), newSlot: selectedAppt.newSlot },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.put(`${API_BASE_URL}/appointments/${selectedAppt._id}`, {
+        newDate: moment(newDate).format('YYYY-MM-DD'),
+        newSlot: selectedAppt.newSlot
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       Toast.show({ type: 'success', text1: 'Rescheduled successfully' });
       setShowModal(false);
       init();
@@ -173,36 +163,21 @@ const fetchAvailableSlots = async (businessId, date) => {
     return (
       <View style={styles.card}>
         <Text style={styles.name}>{business}</Text>
-        <Text style={styles.meta}>{date} | {slot}</Text>
-
+        <Text style={styles.meta}>{date} • {slot}</Text>
         {userRole === 'owner' && (
-          <Text style={styles.customer}>
-            👤 {item.customer?.name || 'Unknown'} ({item.customer?.email})
-          </Text>
+          <Text style={styles.customer}>👤 {item.customer?.name || 'Unknown'} ({item.customer?.email})</Text>
         )}
-
         <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#ff9800' }]}
-            onPress={() => showRescheduleModal(item)}
-          >
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#ff9800' }]} onPress={() => showRescheduleModal(item)}>
             <Icon name="calendar-edit" size={18} color="#fff" />
             <Text style={styles.actionText}>Reschedule</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#f44336' }]}
-            onPress={() => cancelAppointment(item._id)}
-          >
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#f44336' }]} onPress={() => cancelAppointment(item._id)}>
             <Icon name="cancel" size={18} color="#fff" />
             <Text style={styles.actionText}>Cancel</Text>
           </TouchableOpacity>
-
           {userRole === 'owner' && !item.confirmed && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#4caf50' }]}
-              onPress={() => confirmAppointment(item._id)}
-            >
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#4caf50' }]} onPress={() => confirmAppointment(item._id)}>
               <Icon name="check" size={18} color="#fff" />
               <Text style={styles.actionText}>Confirm</Text>
             </TouchableOpacity>
@@ -212,25 +187,19 @@ const fetchAvailableSlots = async (businessId, date) => {
     );
   };
 
-  if (loading) {
-    return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
-  }
+  if (loading) return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.badge}>
-        Total Appointments: {appointments.length}
-      </Text>
+      <Text style={styles.badge}>You have {appointments.length} Appointments</Text>
       <FlatList
         data={appointments}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No appointments found.</Text>
-        }
+        ListEmptyComponent={<Text style={styles.empty}>No appointments found.</Text>}
       />
 
-      <Modal visible={showModal} animationType="slide" transparent={true}>
+      <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Reschedule Appointment</Text>
@@ -257,14 +226,22 @@ const fetchAvailableSlots = async (businessId, date) => {
                   key={slot.time}
                   disabled={!slot.available}
                   onPress={() => setSelectedAppt(prev => ({ ...prev, newSlot: slot.time }))}
-                  style={[styles.slot, slot.available ? styles.available : styles.booked]}
+                  style={[
+                    styles.slot,
+                    !slot.available && styles.booked,
+                    slot.time === selectedAppt?.newSlot && styles.selectedSlot,
+                  ]}
                 >
                   <Text>{slot.time}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <Button title="Confirm Reschedule" onPress={rescheduleAppointment} />
-            <Button title="Close" onPress={() => setShowModal(false)} color="gray" />
+           <View style={{ marginTop: 10 }}>
+              <Button title="Confirm Reschedule" onPress={rescheduleAppointment} />
+            </View>
+            <View style={{ marginTop: 10 }}>
+              <Button title="Close" onPress={() => setShowModal(false)} color="gray" />
+            </View>
           </View>
         </View>
       </Modal>
@@ -279,32 +256,35 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     fontSize: 16,
-    color: '#555',
+    color: '#333',
   },
   card: {
     backgroundColor: '#fff',
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#ddd',
+    elevation: 2,
   },
-  name: { fontSize: 18, fontWeight: 'bold' },
-  meta: { color: 'gray', marginBottom: 6 },
+  name: { fontSize: 18, fontWeight: 'bold', color: '#222' },
+  meta: { color: '#777', marginBottom: 6 },
   customer: { color: '#444', marginBottom: 8 },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 6,
-    marginRight: 8,
-  },
+ actionRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  gap: 8,
+  marginTop: 8,
+},
+actionBtn: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 10,
+  borderRadius: 6,
+  marginHorizontal: 4,
+},
   actionText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
   empty: { textAlign: 'center', marginTop: 30, color: 'gray' },
   modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
@@ -313,7 +293,8 @@ const styles = StyleSheet.create({
   dateButton: { backgroundColor: '#eee', padding: 10, borderRadius: 5, marginBottom: 10 },
   dateText: { fontSize: 16, textAlign: 'center' },
   slotsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  slot: { padding: 10, borderRadius: 5, margin: 4 },
+  slot: { padding: 10, borderRadius: 5, margin: 4, backgroundColor: '#eee' },
   available: { backgroundColor: '#d0f0c0' },
   booked: { backgroundColor: '#ccc' },
+  selectedSlot: { backgroundColor: '#90caf9' },
 });

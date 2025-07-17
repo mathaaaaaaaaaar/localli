@@ -13,7 +13,6 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
-
 import API_BASE_URL from '../constants/constants';
 
 export default function Index() {
@@ -78,6 +77,11 @@ export default function Index() {
       <TouchableOpacity onPress={() => router.push('/register')}>
         <Text style={styles.registerText}>Don't have an account? Register</Text>
       </TouchableOpacity>
+
+      {/* Optional: Dev link to profile */}
+      {/* <TouchableOpacity onPress={() => router.push('/profile')}>
+        <Text style={styles.profileLink}>Go to Profile</Text>
+      </TouchableOpacity> */}
     </KeyboardAvoidingView>
   );
 }
@@ -120,6 +124,12 @@ const styles = StyleSheet.create({
   registerText: {
     textAlign: 'center',
     color: '#555',
+    fontSize: 14,
+    marginBottom: 10,
+  },
+  profileLink: {
+    textAlign: 'center',
+    color: '#1976d2',
     fontSize: 14,
   },
 });

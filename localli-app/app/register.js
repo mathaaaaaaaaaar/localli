@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, Button, StyleSheet, Alert
+  View, Text, TextInput, Button, StyleSheet, Alert, Image, TouchableOpacity
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 
 import API_BASE_URL from '../constants/constants';
 
@@ -14,7 +15,21 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('customer'); // default to customer
+  const [avatar, setAvatar] = useState(null);
   const router = useRouter();
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setAvatar(result.assets[0].uri);
+    }
+  };
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
@@ -39,6 +54,7 @@ export default function Register() {
         email,
         password,
         role,
+        avatar,
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -64,6 +80,14 @@ export default function Register() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Register on Localli</Text>
+
+      <TouchableOpacity onPress={pickImage} style={styles.avatarPicker}>
+        {avatar ? (
+          <Image source={{ uri: avatar }} style={styles.avatarImage} />
+        ) : (
+          <Text style={styles.avatarPlaceholder}>Pick Avatar</Text>
+        )}
+      </TouchableOpacity>
 
       <TextInput
         style={styles.input}
@@ -101,7 +125,11 @@ export default function Register() {
         </Picker>
       </View>
 
-      <Button title="Register" onPress={handleRegister} />
+      <Button
+        title="Register"
+        onPress={handleRegister}
+        disabled={!name || !email || !password}
+      />
     </View>
   );
 }
@@ -133,5 +161,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     marginBottom: 20,
+  },
+  avatarPicker: {
+    alignItems: 'center',
+    marginBottom: 20,
+    padding: 10,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#eee',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    lineHeight: 100,
+    color: '#888',
   },
 });
