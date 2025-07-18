@@ -1,3 +1,4 @@
+// models/Business.js
 import mongoose from 'mongoose';
 
 const businessSchema = new mongoose.Schema({
@@ -24,6 +25,10 @@ const businessSchema = new mongoose.Schema({
   phone: {
     type: String,
     trim: true,
+    match: [
+      /^(\+1\s?)?(\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}$/,
+      'Invalid Canadian phone number',
+    ],
   },
   price: {
     type: Number,
@@ -31,14 +36,15 @@ const businessSchema = new mongoose.Schema({
     min: [0, 'Price must be a positive number'],
   },
   businessHours: {
-    start: { type: String, required: true },         // Format: 'HH:mm'
-    end: { type: String, required: true },           // Format: 'HH:mm'
-    slotDuration: { type: Number, default: 60 },     // Duration in minutes
+    start: { type: String, required: true, trim: true },       // 'HH:mm'
+    end: { type: String, required: true, trim: true },         // 'HH:mm'
+    slotDuration: { type: Number, default: 60 },               // in minutes
   },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+    index: true,
   },
   active: {
     type: Boolean,
@@ -51,10 +57,6 @@ const businessSchema = new mongoose.Schema({
       createdAt: { type: Date, default: Date.now },
     },
   ],
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+}, { timestamps: true }); // Adds createdAt and updatedAt
 
 export default mongoose.model('Business', businessSchema);

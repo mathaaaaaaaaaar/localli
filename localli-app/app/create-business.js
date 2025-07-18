@@ -74,7 +74,12 @@ export default function CreateBusiness() {
       router.replace('/home');
     } catch (err) {
       console.error('❌ Error creating business:', err);
-      Alert.alert('Error', err?.response?.data?.message || 'Something went wrong.');
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        (Array.isArray(err?.response?.data) ? err.response.data.join(', ') : 'Something went wrong.');
+
+      Toast.show({ type: 'error', text1: 'Error', text2: msg });
     }
   };
 

@@ -55,19 +55,10 @@ export default function MyAppointments() {
         });
         allAppointments = res.data;
       } else {
-        const businesses = await axios.get(`${API_BASE_URL}/businesses`, {
+        const res = await axios.get(`${API_BASE_URL}/appointments/owner/all`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const owned = businesses.data.filter((b) => {
-          const ownerId = b.owner?._id || b.owner;
-          return ownerId?.toString() === id;
-        });
-        for (const biz of owned) {
-          const res = await axios.get(`${API_BASE_URL}/appointments/business/${biz._id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          allAppointments.push(...res.data);
-        }
+        allAppointments = res.data;
       }
       allAppointments.sort((a, b) => new Date(a.date) - new Date(b.date));
       setAppointments(allAppointments);
@@ -120,7 +111,7 @@ export default function MyAppointments() {
     setSelectedAppt({ ...appt, newSlot: appt.slot });
     setNewDate(new Date(appt.date));
     setShowModal(true);
-    fetchAvailableSlots(appt.business._id, parsedDate);
+    fetchAvailableSlots(selectedAppt.business._id, moment(selected).format('YYYY-MM-DD'));
   };
 
   const fetchAvailableSlots = async (businessId, date) => {
@@ -215,7 +206,8 @@ export default function MyAppointments() {
                   setShowPicker(false);
                   if (selected) {
                     setNewDate(selected);
-                    fetchAvailableSlots(selectedAppt.business._id, moment(selected).format('YYYY-MM-DD'));
+                    const businessId = typeof selectedAppt.business === 'object' ? selectedAppt.business._id : selectedAppt.business;
+                    fetchAvailableSlots(businessId, moment(selected).format('YYYY-MM-DD'));
                   }
                 }}
               />

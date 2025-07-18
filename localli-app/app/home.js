@@ -233,60 +233,72 @@ export default function Home() {
       </View>
 
       {/* 🏪 Business List */}
-      <FlatList
-        data={filteredBusinesses}
-        keyExtractor={(item) => item._id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name={categoryIcons[item.category] || 'store'} size={20} color="#555" style={{ marginRight: 8 }} />
-                <Text style={styles.name}>
-                  {item.name} {item.active ? '🟢' : '🔴'}
-                </Text>
-              </View>
-              {userRole === 'owner' && (
-                <Text style={{ fontSize: 12, color: 'gray' }}>🗓️ {item.totalAppointments}</Text>
-              )}
-              {userRole === 'customer' && item.price != null && (
-                <Text style={styles.priceTag}>${parseFloat(item.price).toFixed(2)}</Text>
-              )}
-            </View>
+  <FlatList
+    data={filteredBusinesses}
+    keyExtractor={(item) => item._id}
+    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
+    renderItem={({ item }) => (
+      <View style={styles.card}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Icon name={categoryIcons[item.category] || 'store'} size={20} color="#555" style={{ marginRight: 8 }} />
+            <Text style={styles.name}>
+              {item.name} {item.active ? '🟢' : '🔴'}
+            </Text>
+          </View>
 
-            <Text>{item.description}</Text>
-            <Text style={styles.meta}>{item.category} | {item.address}</Text>
+          {/* 💰 Price shown for both roles only once */}
+          {item.price != null && (
+            <Text style={styles.priceTag}>💰 ${parseFloat(item.price).toFixed(2)}</Text>
+          )}
+        </View>
 
-            {item.phone && (
-              <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.phone}`)}>
-                <Text style={styles.phoneNumber}>📞 {item.phone}</Text>
-              </TouchableOpacity>
-            )}
+        {/* 👤 Owner badge */}
+        {userRole === 'owner' && (
+          <TouchableOpacity onPress={handleViewAppointments}>
+            <Text style={styles.appointmentBadge}>
+              🗓️ {item.totalAppointments} appointments
+            </Text>
+          </TouchableOpacity>
+        )}
 
-            {userRole === 'customer' && item.price != null && (
-              <View style={styles.priceAndButtonWrapper}>
-                <TouchableOpacity style={styles.bookButton} onPress={() => handleBookNow(item._id)}>
-                  <Text style={styles.bookButtonText}>Book Now</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+        {/* 📄 Description + Meta */}
+        <Text>{item.description}</Text>
+        <Text style={styles.meta}>{item.category} | {item.address}</Text>
 
-            {userRole === 'owner' && (
-              <View style={styles.buttonRow}>
-                <Button title="Edit" onPress={() => handleEdit(item._id)} />
-                <Button title="Delete" color="red" onPress={() => handleDelete(item._id)} />
-              </View>
-            )}
+        {/* 📞 Phone */}
+        {item.phone && (
+          <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.phone}`)}>
+            <Text style={styles.phoneNumber}>📞 {item.phone}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* 📅 Book Now for Customers */}
+        {userRole === 'customer' && (
+          <View style={styles.priceAndButtonWrapper}>
+            <TouchableOpacity style={styles.bookButton} onPress={() => handleBookNow(item._id)}>
+              <Text style={styles.bookButtonText}>Book Now</Text>
+            </TouchableOpacity>
           </View>
         )}
-        ListEmptyComponent={
-          <Text style={{ textAlign: 'center', marginTop: 20, color: 'gray' }}>
-            {userRole === 'owner'
-              ? 'You have not created any businesses yet.'
-              : 'No businesses found. Try again later.'}
-          </Text>
-        }
-      />
+
+        {/* ✏️ Edit/Delete for Owners */}
+        {userRole === 'owner' && (
+          <View style={styles.buttonRow}>
+            <Button title="Edit" onPress={() => handleEdit(item._id)} />
+            <Button title="Delete" color="red" onPress={() => handleDelete(item._id)} />
+          </View>
+        )}
+      </View>
+    )}
+    ListEmptyComponent={
+      <Text style={{ textAlign: 'center', marginTop: 20, color: 'gray' }}>
+        {userRole === 'owner'
+          ? 'You have not created any businesses yet.'
+          : 'No businesses found. Try again later.'}
+      </Text>
+    }
+  />
     </View>
   );
 }
@@ -359,5 +371,13 @@ sortButtonText: {
 },
 activeSortButtonText: {
   color: '#fff',
+},
+
+appointmentBadge: {
+  marginTop: 4,
+  fontSize: 17,
+  color: '#1565c0',
+  textDecorationLine: 'underline',
+  fontWeight: '500',
 }
 });

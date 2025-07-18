@@ -83,7 +83,22 @@ router.post('/book', authMiddleware, async (req, res) => {
       slot,
       confirmed: false,
     });
+
     await newAppointment.save();
+
+    await Business.findByIdAndUpdate(
+      businessId,
+      {
+        $push: {
+          bookings: {
+            customer: userId,
+            date,
+            createdAt: new Date(),
+          },
+        },
+      }
+    );
+
     res.json({ message: 'Appointment booked successfully' });
   } catch (err) {
     if (err.code === 11000) {
@@ -204,6 +219,24 @@ router.post('/:id/confirm', authMiddleware, async (req, res) => {
     res.json({ message: 'Appointment confirmed' });
   } catch (err) {
     console.error('❌ Error confirming appointment:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ✅ NEW: Get all appointments across all businesses for logged-in owner
+router.get('/owner/all', authMiddleware, async (req, res) => {
+  try {
+    const businesses = await Business.find({ owner: req.user.id });
+    const businessIds = businesses.map(b => b._id);
+
+    const appointments = await Appointment.find({ business: { $in: businessIds } })
+      .populate('customer', 'name email')
+      .populate('business', 'name') // Optional for frontend
+      .sort({ date: 1, slot: 1 });
+
+    res.json(appointments);
+  } catch (err) {
+    console.error('❌ Error fetching owner all appointments:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

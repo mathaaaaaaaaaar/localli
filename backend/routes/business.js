@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
     res.json(enhancedBusinesses);
   } catch (err) {
     console.error('❌ Error fetching businesses:', err.message);
-    res.status(500).json({ message: 'Error fetching businesses' });
+    res.status(500).json({ error: 'Error fetching businesses' });
   }
 });
 
@@ -47,18 +47,18 @@ router.get('/', async (req, res) => {
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id).populate('owner', 'email');
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
     res.json(business);
   } catch (err) {
     console.error('❌ Error fetching business:', err.message);
-    res.status(500).json({ message: 'Error fetching business' });
+    res.status(500).json({ error: 'Error fetching business' });
   }
 });
 
 // ✅ Create business (owner only)
 router.post('/', authMiddleware, async (req, res) => {
   if (req.user.role !== 'owner') {
-    return res.status(403).json({ message: 'Only owners can create businesses' });
+    return res.status(403).json({ error: 'Only owners can create businesses' });
   }
 
   const { name, description, category, address, phone, price, businessHours } = req.body;
@@ -79,7 +79,12 @@ router.post('/', authMiddleware, async (req, res) => {
     res.status(201).json({ message: 'Business created successfully', business });
   } catch (err) {
     console.error('❌ Error creating business:', err.message);
-    res.status(500).json({ message: 'Error creating business' });
+    // 👇 Return validation error to frontend
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    res.status(500).json({ error: 'Error creating business' });
   }
 });
 
@@ -87,10 +92,10 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
 
     if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
     Object.assign(business, req.body);
@@ -98,7 +103,11 @@ router.put('/:id', authMiddleware, async (req, res) => {
     res.json({ message: 'Business updated', business });
   } catch (err) {
     console.error('❌ Error updating business:', err.message);
-    res.status(500).json({ message: 'Error updating business' });
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    res.status(500).json({ error: 'Error updating business' });
   }
 });
 
@@ -106,31 +115,31 @@ router.put('/:id', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
 
     if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
     await business.deleteOne();
     res.json({ message: 'Business deleted successfully' });
   } catch (err) {
     console.error('❌ Error deleting business:', err.message);
-    res.status(500).json({ message: 'Error deleting business' });
+    res.status(500).json({ error: 'Error deleting business' });
   }
 });
 
-// ✅ [LEGACY] Book service route (not required if using /appointments flow)
+// ✅ Legacy Book service (not used if using appointments)
 router.post('/:id/book', authMiddleware, async (req, res) => {
   if (req.user.role !== 'customer') {
-    return res.status(403).json({ message: 'Only customers can book services' });
+    return res.status(403).json({ error: 'Only customers can book services' });
   }
 
   const { date } = req.body;
 
   try {
     const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
 
     const booking = {
       customer: req.user.id,
@@ -143,26 +152,26 @@ router.post('/:id/book', authMiddleware, async (req, res) => {
     res.status(201).json({ message: 'Service booked successfully', booking });
   } catch (err) {
     console.error('❌ Error booking service:', err.message);
-    res.status(500).json({ message: 'Error booking service' });
+    res.status(500).json({ error: 'Error booking service' });
   }
 });
 
-// ✅ GET bookings (owner only – legacy if using appointments)
+// ✅ Legacy Get bookings
 router.get('/:id/bookings', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id)
       .populate('bookings.customer', 'name email');
 
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
 
     if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
     res.json(business.bookings);
   } catch (err) {
     console.error('❌ Error fetching bookings:', err.message);
-    res.status(500).json({ message: 'Error fetching bookings' });
+    res.status(500).json({ error: 'Error fetching bookings' });
   }
 });
 
