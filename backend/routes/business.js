@@ -1,7 +1,7 @@
 import express from 'express';
-
 import authMiddleware from '../middleware/authMiddleware.js';
 import Business from '../models/Business.js';
+import Appointment from '../models/Appointment.js';
 
 const router = express.Router();
 
@@ -12,49 +12,56 @@ router.get('/', async (req, res) => {
     const filter = {};
 
     if (search) {
-      filter.name = { $regex: search, $options: 'i' }; // case-insensitive search
+      filter.name = { $regex: search, $options: 'i' };
     }
 
     if (category) {
       filter.category = category;
     }
 
-    let sortOption = { createdAt: -1 }; // default to latest
+    let sortOption = { createdAt: -1 };
     if (sort === 'name_asc') sortOption = { name: 1 };
     if (sort === 'name_desc') sortOption = { name: -1 };
     if (sort === 'latest') sortOption = { createdAt: -1 };
 
     const businesses = await Business.find(filter)
       .populate('owner', 'email')
-      .sort(sortOption);
+      .sort(sortOption)
+      .lean();
 
-    res.json(businesses);
+    const enhancedBusinesses = await Promise.all(
+      businesses.map(async (b) => {
+        const totalAppointments = await Appointment.countDocuments({ business: b._id });
+        return { ...b, totalAppointments };
+      })
+    );
+
+    res.json(enhancedBusinesses);
   } catch (err) {
     console.error('❌ Error fetching businesses:', err.message);
-    res.status(500).json({ message: 'Error fetching businesses' });
+    res.status(500).json({ error: 'Error fetching businesses' });
   }
 });
 
-// ✅ GET single business by ID (protected)
+// ✅ GET single business by ID
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id).populate('owner', 'email');
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
     res.json(business);
   } catch (err) {
     console.error('❌ Error fetching business:', err.message);
-    res.status(500).json({ message: 'Error fetching business' });
+    res.status(500).json({ error: 'Error fetching business' });
   }
 });
 
-// ✅ POST create business (only owners)
+// ✅ Create business (owner only)
 router.post('/', authMiddleware, async (req, res) => {
   if (req.user.role !== 'owner') {
-    console.warn('🚫 Rejected: Not an owner');
-    return res.status(403).json({ message: 'Only owners can create businesses' });
+    return res.status(403).json({ error: 'Only owners can create businesses' });
   }
 
-  const { name, description, category, address, phone, price } = req.body;
+  const { name, description, category, address, phone, price, businessHours } = req.body;
 
   try {
     const business = new Business({
@@ -64,6 +71,7 @@ router.post('/', authMiddleware, async (req, res) => {
       address,
       phone,
       price,
+      businessHours,
       owner: req.user.id,
     });
 
@@ -71,18 +79,23 @@ router.post('/', authMiddleware, async (req, res) => {
     res.status(201).json({ message: 'Business created successfully', business });
   } catch (err) {
     console.error('❌ Error creating business:', err.message);
-    res.status(500).json({ message: 'Error creating business' });
+    // 👇 Return validation error to frontend
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    res.status(500).json({ error: 'Error creating business' });
   }
 });
 
-// ✅ PUT update business (only owner who owns the business)
+// ✅ Update business
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
 
     if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
     Object.assign(business, req.body);
@@ -90,40 +103,43 @@ router.put('/:id', authMiddleware, async (req, res) => {
     res.json({ message: 'Business updated', business });
   } catch (err) {
     console.error('❌ Error updating business:', err.message);
-    res.status(500).json({ message: 'Error updating business' });
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    res.status(500).json({ error: 'Error updating business' });
   }
 });
 
-// ✅ DELETE business (only owner who owns the business)
+// ✅ Delete business
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
 
     if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
     await business.deleteOne();
     res.json({ message: 'Business deleted successfully' });
   } catch (err) {
     console.error('❌ Error deleting business:', err.message);
-    res.status(500).json({ message: 'Error deleting business' });
+    res.status(500).json({ error: 'Error deleting business' });
   }
 });
 
-// ✅ POST book a service (only customers)
+// ✅ Legacy Book service (not used if using appointments)
 router.post('/:id/book', authMiddleware, async (req, res) => {
   if (req.user.role !== 'customer') {
-    console.warn('🚫 Rejected: Not a customer');
-    return res.status(403).json({ message: 'Only customers can book services' });
+    return res.status(403).json({ error: 'Only customers can book services' });
   }
 
   const { date } = req.body;
 
   try {
     const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
 
     const booking = {
       customer: req.user.id,
@@ -136,30 +152,26 @@ router.post('/:id/book', authMiddleware, async (req, res) => {
     res.status(201).json({ message: 'Service booked successfully', booking });
   } catch (err) {
     console.error('❌ Error booking service:', err.message);
-    res.status(500).json({ message: 'Error booking service' });
+    res.status(500).json({ error: 'Error booking service' });
   }
 });
 
-// ✅ GET bookings for a business (role-based visibility)
+// ✅ Legacy Get bookings
 router.get('/:id/bookings', authMiddleware, async (req, res) => {
   try {
-    const business = await Business.findById(req.params.id).populate('bookings.customer', 'name email');
-    if (!business) return res.status(404).json({ message: 'Business not found' });
+    const business = await Business.findById(req.params.id)
+      .populate('bookings.customer', 'name email');
 
-    if (req.user.role === 'owner') {
-      // Owners see all bookings
-      return res.json(business.bookings);
-    } else if (req.user.role === 'customer') {
-      // Customers see only available times
-      const bookedDates = business.bookings.map((booking) => booking.date);
-      const availableTimes = generateAvailableTimes(bookedDates); // Implement logic to generate available times
-      return res.json({ availableTimes });
-    } else {
-      return res.status(403).json({ message: 'Not authorized' });
+    if (!business) return res.status(404).json({ error: 'Business not found' });
+
+    if (req.user.role !== 'owner' || business.owner.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
     }
+
+    res.json(business.bookings);
   } catch (err) {
     console.error('❌ Error fetching bookings:', err.message);
-    res.status(500).json({ message: 'Error fetching bookings' });
+    res.status(500).json({ error: 'Error fetching bookings' });
   }
 });
 

@@ -6,7 +6,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  ScrollView
+  ScrollView,
+  Button,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
@@ -22,12 +23,16 @@ export default function BookAppointment() {
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [slots, setSlots] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const formattedDate = moment(date).format('YYYY-MM-DD');
 
   useEffect(() => {
-    if (businessId) fetchSlots(formattedDate);
+    if (businessId) {
+      setSelectedSlot(null); // clear previous selection
+      fetchSlots(formattedDate);
+    }
   }, [formattedDate]);
 
   const fetchSlots = async (selectedDate) => {
@@ -38,7 +43,7 @@ export default function BookAppointment() {
         headers: { Authorization: `Bearer ${token}` },
         params: { date: selectedDate },
       });
-      setSlots(res.data || []); // handle array directly
+      setSlots(res.data || []);
     } catch (err) {
       console.error('❌ Failed to fetch slots:', err);
       Alert.alert('Error', 'Could not fetch slots');
@@ -47,12 +52,17 @@ export default function BookAppointment() {
     }
   };
 
-  const handleBookSlot = async (slot) => {
+  const handleBookSlot = async () => {
+    if (!selectedSlot) {
+      Toast.show({ type: 'error', text1: 'No slot selected!' });
+      return;
+    }
+
     try {
       const token = await AsyncStorage.getItem('userToken');
       await axios.post(
         `${API_BASE_URL}/appointments/book`,
-        { businessId, date: formattedDate, slot },
+        { businessId, date: formattedDate, slot: selectedSlot },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       Toast.show({ type: 'success', text1: 'Appointment booked!' });
@@ -93,19 +103,32 @@ export default function BookAppointment() {
         <ActivityIndicator size="large" />
       ) : (
         <View style={styles.slotsContainer}>
+          {slots.length === 0 && (
+            <Text style={{ textAlign: 'center', marginVertical: 20 }}>No slots available</Text>
+          )}
           {slots.map((slot) => (
             <TouchableOpacity
               key={slot.time}
               disabled={!slot.available}
-              onPress={() => handleBookSlot(slot.time)}
+              onPress={() => setSelectedSlot(slot.time)}
               style={[
                 styles.slot,
-                slot.available ? styles.available : styles.booked
+                slot.available ? styles.available : styles.booked,
+                selectedSlot === slot.time && styles.selected,
               ]}
             >
               <Text style={styles.slotText}>{slot.time}</Text>
             </TouchableOpacity>
           ))}
+        </View>
+      )}
+
+      {selectedSlot && (
+        <View style={{ marginTop: 20 }}>
+          <Text style={{ textAlign: 'center', marginBottom: 10 }}>
+            Selected Slot: <Text style={{ fontWeight: 'bold' }}>{selectedSlot}</Text>
+          </Text>
+          <Button title="Confirm Booking" onPress={handleBookSlot} />
         </View>
       )}
     </ScrollView>
@@ -140,6 +163,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    justifyContent: 'center',
   },
   slot: {
     padding: 12,
@@ -157,5 +181,9 @@ const styles = StyleSheet.create({
   },
   booked: {
     backgroundColor: '#ddd',
+  },
+  selected: {
+    borderWidth: 2,
+    borderColor: '#007bff',
   },
 });

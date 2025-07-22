@@ -1,4 +1,3 @@
-// 📁 backend/routes/appointments.js
 import express from 'express';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
@@ -7,15 +6,33 @@ import Business from '../models/Business.js';
 
 const router = express.Router();
 
-const generateSlots = () => {
+// Generate slots based on business hours and slot duration
+function generateSlots(start, end, slotDuration, date, bookedSlots = []) {
   const slots = [];
-  for (let hour = 11; hour < 18; hour++) {
-    const start = `${hour.toString().padStart(2, '0')}:00`;
-    const end = `${(hour + 1).toString().padStart(2, '0')}:00`;
-    slots.push(`${start}-${end}`);
+
+  const startTime = new Date(`${date}T${start}`);
+  const endTime = new Date(`${date}T${end}`);
+  let current = new Date(startTime);
+
+  while (current < endTime) {
+    const next = new Date(current.getTime() + slotDuration * 60000);
+    if (next > endTime) break;
+
+    const slot = `${formatTime(current)}-${formatTime(next)}`;
+    slots.push({
+      time: slot,
+      available: !bookedSlots.includes(slot),
+    });
+
+    current = next;
   }
+
   return slots;
-};
+}
+
+function formatTime(date) {
+  return date.toTimeString().slice(0, 5);
+}
 
 // ✅ GET available slots
 router.get('/:businessId/slots', authMiddleware, async (req, res) => {
@@ -28,16 +45,21 @@ router.get('/:businessId/slots', authMiddleware, async (req, res) => {
   }
 
   try {
+    const business = await Business.findById(businessId);
+    if (!business) return res.status(404).json({ error: 'Business not found' });
+
+    const hours = business.businessHours;
+    if (!hours || !hours.start || !hours.end) {
+      return res.status(400).json({ error: 'Business hours not configured' });
+    }
+
+    const { start, end, slotDuration = 60 } = hours;
+
     const booked = await Appointment.find({ business: businessId, date });
     const bookedSlots = booked.map(a => a.slot);
 
-    const allSlots = generateSlots();
-    const result = allSlots.map(slot => ({
-      time: slot,
-      available: !bookedSlots.includes(slot),
-    }));
-
-    res.json(result);
+    const slots = generateSlots(start, end, slotDuration, date, bookedSlots);
+    res.json(slots);
   } catch (err) {
     console.error('❌ Error fetching slots:', err);
     res.status(500).json({ error: 'Server error' });
@@ -61,7 +83,22 @@ router.post('/book', authMiddleware, async (req, res) => {
       slot,
       confirmed: false,
     });
+
     await newAppointment.save();
+
+    await Business.findByIdAndUpdate(
+      businessId,
+      {
+        $push: {
+          bookings: {
+            customer: userId,
+            date,
+            createdAt: new Date(),
+          },
+        },
+      }
+    );
+
     res.json({ message: 'Appointment booked successfully' });
   } catch (err) {
     if (err.code === 11000) {
@@ -182,6 +219,24 @@ router.post('/:id/confirm', authMiddleware, async (req, res) => {
     res.json({ message: 'Appointment confirmed' });
   } catch (err) {
     console.error('❌ Error confirming appointment:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ✅ NEW: Get all appointments across all businesses for logged-in owner
+router.get('/owner/all', authMiddleware, async (req, res) => {
+  try {
+    const businesses = await Business.find({ owner: req.user.id });
+    const businessIds = businesses.map(b => b._id);
+
+    const appointments = await Appointment.find({ business: { $in: businessIds } })
+      .populate('customer', 'name email')
+      .populate('business', 'name') // Optional for frontend
+      .sort({ date: 1, slot: 1 });
+
+    res.json(appointments);
+  } catch (err) {
+    console.error('❌ Error fetching owner all appointments:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

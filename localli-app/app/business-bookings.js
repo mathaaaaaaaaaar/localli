@@ -1,4 +1,3 @@
-// 📁 app/business-bookings.js
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -17,7 +16,6 @@ import moment from 'moment';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
-import { decode as atob } from 'base-64';
 import API_BASE_URL from '../constants/constants';
 
 export default function BusinessBookings() {
@@ -38,28 +36,12 @@ export default function BusinessBookings() {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const decoded = JSON.parse(atob(token.split('.')[1]));
-
-      const bizRes = await axios.get(`${API_BASE_URL}/businesses`, {
+      const res = await axios.get(`${API_BASE_URL}/appointments/owner/all`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      const ownerBusinesses = bizRes.data.filter(b => b.owner?._id === decoded.id);
-      if (ownerBusinesses.length === 0) {
-        Toast.show({ type: 'info', text1: 'No business found for this owner' });
-        setAppointments([]);
-        return;
-      }
-
-      const businessId = ownerBusinesses[0]._id;
-
-      const res = await axios.get(`${API_BASE_URL}/appointments/business/${businessId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
       setAppointments(res.data);
     } catch (err) {
-      console.error('❌ Error fetching business appointments:', err.response?.data || err.message);
+      console.error('❌ Error fetching appointments:', err.response?.data || err.message);
       Toast.show({ type: 'error', text1: 'Failed to load bookings' });
     } finally {
       setLoading(false);
@@ -83,23 +65,23 @@ export default function BusinessBookings() {
             Toast.show({ type: 'error', text1: 'Failed to cancel' });
           }
         },
-      }
+      },
     ]);
   };
 
-const confirmAppointment = async (id) => {
-  try {
-    const token = await AsyncStorage.getItem('userToken');
-    await axios.post(`${API_BASE_URL}/appointments/${id}/confirm`, {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    Toast.show({ type: 'success', text1: 'Appointment confirmed' });
-    fetchAppointments();
-  } catch (err) {
-    console.error('❌ Confirm error:', err.response?.data || err.message);
-    Toast.show({ type: 'error', text1: 'Failed to confirm' });
-  }
-};
+  const confirmAppointment = async (id) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      await axios.post(`${API_BASE_URL}/appointments/${id}/confirm`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      Toast.show({ type: 'success', text1: 'Appointment confirmed' });
+      fetchAppointments();
+    } catch (err) {
+      console.error('❌ Confirm error:', err.response?.data || err.message);
+      Toast.show({ type: 'error', text1: 'Failed to confirm' });
+    }
+  };
 
   const rescheduleAppointment = async () => {
     if (!selectedAppt) return;
@@ -107,7 +89,10 @@ const confirmAppointment = async (id) => {
       const token = await AsyncStorage.getItem('userToken');
       await axios.put(
         `${API_BASE_URL}/appointments/${selectedAppt._id}`,
-        { newDate: moment(newDate).format('YYYY-MM-DD'), newSlot: selectedAppt.newSlot },
+        {
+          newDate: moment(newDate).format('YYYY-MM-DD'),
+          newSlot: selectedAppt.newSlot,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       Toast.show({ type: 'success', text1: 'Rescheduled successfully' });
@@ -122,7 +107,12 @@ const confirmAppointment = async (id) => {
     setSelectedAppt({ ...appt, newSlot: appt.slot });
     setNewDate(new Date(appt.date));
     setShowModal(true);
-    fetchAvailableSlots(appt.business._id, appt.date);
+
+    const businessId =
+      typeof appt.business === 'object' ? appt.business._id : appt.business;
+
+    const formattedDate = moment(appt.date).format('YYYY-MM-DD');
+    fetchAvailableSlots(businessId, formattedDate);
   };
 
   const fetchAvailableSlots = async (businessId, date) => {
@@ -130,7 +120,7 @@ const confirmAppointment = async (id) => {
       const token = await AsyncStorage.getItem('userToken');
       const res = await axios.get(`${API_BASE_URL}/appointments/${businessId}/slots`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { date },
+        params: { date: moment(date).format('YYYY-MM-DD') },
       });
       setAvailableSlots(res.data);
     } catch (err) {
@@ -141,8 +131,13 @@ const confirmAppointment = async (id) => {
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       <Text style={styles.name}>{item.customer?.name}</Text>
-      <Text style={styles.meta}>{moment(item.date).format('MMMM Do YYYY')} | {item.slot}</Text>
+      <Text style={styles.meta}>
+        {moment(item.date).format('MMMM Do YYYY')} | {item.slot}
+      </Text>
       <Text>{item.customer?.email}</Text>
+      <Text style={{ color: '#555' }}>
+        🏢 {item.business?.name || 'Business'}
+      </Text>
       <View style={styles.buttonRow}>
         <Button title="Reschedule" onPress={() => showRescheduleModal(item)} />
         <Button title="Cancel" color="red" onPress={() => deleteAppointment(item._id)} />
@@ -186,7 +181,11 @@ const confirmAppointment = async (id) => {
                   setShowPicker(false);
                   if (selected) {
                     setNewDate(selected);
-                    fetchAvailableSlots(selectedAppt.business._id, moment(selected).format('YYYY-MM-DD'));
+                    const businessId =
+                      typeof selectedAppt.business === 'object'
+                        ? selectedAppt.business._id
+                        : selectedAppt.business;
+                    fetchAvailableSlots(businessId, moment(selected).format('YYYY-MM-DD'));
                   }
                 }}
               />
@@ -219,12 +218,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#ddd'
+    borderColor: '#ddd',
   },
   name: { fontSize: 18, fontWeight: 'bold' },
   meta: { color: 'gray', marginBottom: 4 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  modalContainer: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center', alignItems: 'center'
+  },
   modalContent: { backgroundColor: 'white', padding: 20, borderRadius: 8, width: '90%' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   dateButton: { backgroundColor: '#eee', padding: 10, borderRadius: 5, marginBottom: 10 },
