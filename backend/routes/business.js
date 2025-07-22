@@ -163,6 +163,48 @@ router.get('/:id/bookings', authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/:id/reviews', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { comment, rating } = req.body;
+
+    if (!comment || !rating) {
+      return res.status(400).json({ error: 'Comment and rating are required.' });
+    }
+
+    const business = await Business.findById(id);
+    if (!business) {
+      return res.status(404).json({ error: 'Business not found.' });
+    }
+
+    const review = new Review({
+      business: id,
+      user: req.user.id,
+      comment,
+      rating,
+    });
+
+    await review.save();
+    res.status(201).json(review);
+  } catch (err) {
+    console.error('Error adding review:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// GET /businesses/:id/reviews - Get all reviews for a business
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const reviews = await Review.find({ business: id }).populate('user', 'name');
+    res.status(200).json(reviews);
+  } catch (err) {
+    console.error('Error fetching reviews:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 // Helper function to generate available times
 function generateAvailableTimes(bookedDates) {
   const allTimes = []; // Define all possible times (e.g., 9 AM to 5 PM)

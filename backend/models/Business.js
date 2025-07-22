@@ -42,6 +42,11 @@ const businessSchema = new mongoose.Schema({
       createdAt: { type: Date, default: Date.now },
     },
   ],
+  reviews: [
+    { type: mongoose.Schema.Types.ObjectId, ref: 'Review' 
+
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now,
