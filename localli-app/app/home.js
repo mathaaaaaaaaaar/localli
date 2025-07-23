@@ -326,13 +326,11 @@ export default function Home() {
               </View>
             )}
 
-          </View>
 
-          {/* 💰 Price shown for both roles only once */}
+          // {/* 💰 Price shown for both roles only once */}
           {item.price != null && (
             <Text style={styles.priceTag}>💰 ${parseFloat(item.price).toFixed(2)}</Text>
           )}
-        </View>
 
         {/* 👤 Owner badge */}
         {userRole === 'owner' && (
