@@ -1,7 +1,8 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import Appointment from '../models/Appointment.js';
+
 import authMiddleware from '../middleware/authMiddleware.js';
+import Appointment from '../models/Appointment.js';
 import Business from '../models/Business.js';
 
 const router = express.Router();
@@ -98,6 +99,8 @@ router.post('/book', authMiddleware, async (req, res) => {
         },
       }
     );
+
+    await newAppointment.scheduleNotifications(); // Schedule notifications
 
     res.json({ message: 'Appointment booked successfully' });
   } catch (err) {
