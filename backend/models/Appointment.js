@@ -2,6 +2,7 @@
 import mongoose from 'mongoose';
 import schedule from 'node-schedule';
 
+import transporter from '../middleware/emailer.js';
 import Notification from './Notification.js';
 import User from './User.js';
 
@@ -64,6 +65,20 @@ async function sendNotification(userId, message) {
     const notification = new Notification({ user: userId, message });
     await notification.save();
     console.log(`Notification sent to ${user.name}: ${message}`);
+
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER || "elliott.wisoky@ethereal.email", // Sender address
+        to: user.email, // Recipient's email address
+        subject: 'Appointment Reminder', // Email subject
+        text: message, // Plain text body
+      });
+      console.log(`Email sent to ${user.email}: ${message}`);
+    } catch (err) {
+      console.error(`❌ Error sending email to ${user.email}:`, err);
+    }
+  } else {
+    console.error(`User with ID ${userId} not found.`);
   }
 }
 
