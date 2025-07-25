@@ -1,13 +1,14 @@
 import cors from 'cors';
-import express from 'express';
 import dotenv from 'dotenv';
-import path from 'path';
+import express from 'express';
 import mongoose from 'mongoose';
+import path from 'path';
 import { fileURLToPath } from 'url';
 
+import appointmentRoutes from './routes/appointments.js';
 import authRoutes from './routes/auth.js';
 import businessRoutes from './routes/business.js';
-import appointmentRoutes from './routes/appointments.js';
+import reviewRoutes from './routes/reviews.js';
 import userRoutes from './routes/user.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,6 +42,7 @@ app.use('/auth', authRoutes);
 app.use('/businesses', businessRoutes);
 app.use('/appointments', appointmentRoutes);
 app.use('/user', userRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // ✅ Fallback 404
 app.use((req, res) => {
