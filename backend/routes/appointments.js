@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import authMiddleware from '../middleware/authMiddleware.js';
 import Appointment from '../models/Appointment.js';
 import Business from '../models/Business.js';
+import Notification from '../models/Notification.js';
 
 const router = express.Router();
 
@@ -87,6 +88,31 @@ router.post('/book', authMiddleware, async (req, res) => {
 
     await newAppointment.save();
 
+    // Send immediate notification
+    const business = await Business.findById(businessId);
+    if (business) {
+      const message = `Your booking for ${date} at ${slot} has been confirmed.`;
+      const notification = new Notification({
+        user: userId,
+        message,
+        type: 'booking',
+      });
+      await notification.save();
+
+      // Send email notification
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER || "elliott.wisoky@ethereal.email", // Sender address
+          to: req.user.email, // Customer's email address
+          subject: 'Booking Confirmation',
+          text: message,
+        });
+        console.log(`Email sent to ${req.user.email}: ${message}`);
+      } catch (err) {
+        console.error(`❌ Error sending email to ${req.user.email}:`, err);
+      }
+    }
+
     await Business.findByIdAndUpdate(
       businessId,
       {
@@ -102,7 +128,7 @@ router.post('/book', authMiddleware, async (req, res) => {
 
     console.log('Calling scheduleNotifications...');
     console.log('newAppointment instance:', newAppointment);
-console.log('scheduleNotifications method:', newAppointment.scheduleNotifications);
+    console.log('scheduleNotifications method:', newAppointment.scheduleNotifications);
     await newAppointment.scheduleNotifications(); // Schedule notifications
 
     res.json({ message: 'Appointment booked successfully' });

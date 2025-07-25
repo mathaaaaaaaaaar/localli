@@ -62,7 +62,7 @@ async function sendNotification(userId, message) {
   console.log(`Sending notification to user ${userId}: ${message}`);
   const user = await User.findById(userId);
   if (user) {
-    const notification = new Notification({ user: userId, message });
+    const notification = new Notification({ user: userId, message, type: 'reminder' });
     await notification.save();
     console.log(`Notification sent to ${user.name}: ${message}`);
 
