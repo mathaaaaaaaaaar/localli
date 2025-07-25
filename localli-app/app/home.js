@@ -1,25 +1,33 @@
-import React, { useState, useCallback } from 'react';
+import React, {
+  useCallback,
+  useState,
+} from 'react';
+
+import axios from 'axios';
+import { decode as atob } from 'base-64';
+import { useRouter } from 'expo-router';
 import {
-  Linking,
-  View,
-  Text,
-  FlatList,
-  Button,
-  StyleSheet,
-  Alert,
-  RefreshControl,
-  Image,
   ActivityIndicator,
+  Alert,
+  Button,
+  FlatList,
+  Image,
+  Linking,
+  RefreshControl,
+  StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { useRouter } from 'expo-router';
-import { decode as atob } from 'base-64';
 import Toast from 'react-native-toast-message';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  useFocusEffect,
+  useNavigation,
+} from '@react-navigation/native';
 
 import API_BASE_URL from '../constants/constants';
 
@@ -127,6 +135,35 @@ export default function Home() {
     router.push(userRole === 'owner' ? '/business-bookings' : '/my-appointments');
   };
 
+  const handleAddReview = async (businessId) => {
+    Alert.prompt(
+      'Add Review',
+      'Write your review below:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Submit',
+          onPress: async (reviewText) => {
+            try {
+              const token = await AsyncStorage.getItem('userToken');
+              await axios.post(`${API_BASE_URL}/businesses/${businessId}/reviews`, 
+                { comment: reviewText, rating: 5 }, // Adjust rating as needed
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              Toast.show({ type: 'success', text1: 'Review added successfully' });
+              fetchData(); // Refresh data to include the new review
+            } catch (err) {
+              console.error('❌ Error adding review:', err.message);
+              Alert.alert('Error', 'Failed to add review');
+            }
+          },
+        },
+      ],
+      'plain-text'
+    );
+  };
+
+  
  const filteredBusinesses = businesses
   .filter(b =>
     (!selectedCategory || b.category === selectedCategory) &&
@@ -232,26 +269,62 @@ export default function Home() {
         ))}
       </View>
 
-      {/* 🏪 Business List */}
-  <FlatList
-    data={filteredBusinesses}
-    keyExtractor={(item) => item._id}
-    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
-    renderItem={({ item }) => (
-      <View style={styles.card}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Icon name={categoryIcons[item.category] || 'store'} size={20} color="#555" style={{ marginRight: 8 }} />
-            <Text style={styles.name}>
-              {item.name} {item.active ? '🟢' : '🔴'}
-            </Text>
-          </View>
+      <FlatList
+        data={filteredBusinesses}
+        keyExtractor={(item) => item._id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name={categoryIcons[item.category] || 'store'} size={20} color="#555" style={{ marginRight: 8 }} />
+                <Text style={styles.name}>{item.name}</Text>
+              </View>
+              {userRole === 'customer' && item.price != null && (
+                <Text style={styles.priceTag}>${parseFloat(item.price).toFixed(2)}</Text>
+              )}
+            </View>
+
+            <Text>{item.description}</Text>
+            <Text style={styles.meta}>{item.category} | {item.address}</Text>
+
+            {item.phone && (
+              <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.phone}`)}>
+                <Text style={styles.phoneNumber}>📞 {item.phone}</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Display reviews */}
+            <View style={styles.reviewsSection}>
+                  <Text style={styles.reviewsTitle}>Reviews:</Text>
+                  {item.reviews?.length > 0 ? (
+                    item.reviews.map((review, index) => (
+                      <Text key={index} style={styles.reviewText}>
+                        {review.user}: {review.comment}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={styles.noReviewsText}>No reviews yet.</Text>
+                  )}
+                  <TouchableOpacity style={styles.addReviewButton} onPress={() => handleAddReview(item._id)}>
+                    <Text style={styles.addReviewButtonText}>Add Review</Text>
+                  </TouchableOpacity>
+                </View>
+
+            
+
+            {userRole === 'owner' && (
+              <View style={styles.buttonRow}>
+                <Button title="Edit" onPress={() => handleEdit(item._id)} />
+                <Button title="Delete" color="red" onPress={() => handleDelete(item._id)} />
+              </View>
+            )}
+
 
           {/* 💰 Price shown for both roles only once */}
           {item.price != null && (
             <Text style={styles.priceTag}>💰 ${parseFloat(item.price).toFixed(2)}</Text>
           )}
-        </View>
 
         {/* 👤 Owner badge */}
         {userRole === 'owner' && (
@@ -344,6 +417,19 @@ const styles = StyleSheet.create({
   bookButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   centered: { justifyContent: 'center', alignItems: 'center' },
+  reviewsSection: { marginTop: 10, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8 },
+  reviewsTitle: { fontWeight: 'bold', marginBottom: 5 },
+  reviewText: { fontSize: 14, marginBottom: 5 },
+  noReviewsText: { fontStyle: 'italic', color: 'gray' },
+  addReviewButton: {
+    marginTop: 10,
+    backgroundColor: '#1976d2',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  addReviewButtonText: { color: '#fff', fontWeight: 'bold' },
 
   sortRow: {
   flexDirection: 'row',
