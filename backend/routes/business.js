@@ -1,7 +1,9 @@
 import express from 'express';
+
 import authMiddleware from '../middleware/authMiddleware.js';
-import Business from '../models/Business.js';
 import Appointment from '../models/Appointment.js';
+import Business from '../models/Business.js';
+import Reviews from '../models/Reviews.js';
 
 const router = express.Router();
 
@@ -189,7 +191,7 @@ router.post('/:id/reviews', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Business not found.' });
     }
 
-    const review = new Review({
+    const review = new Reviews({
       business: id,
       user: req.user.id,
       comment,
@@ -209,7 +211,7 @@ router.get('/:id/reviews', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const reviews = await Review.find({ business: id }).populate('user', 'name');
+    const reviews = await Reviews.find({ business: id }).populate('user', 'name');
     res.status(200).json(reviews);
   } catch (err) {
     console.error('Error fetching reviews:', err);

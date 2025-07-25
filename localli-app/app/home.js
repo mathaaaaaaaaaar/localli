@@ -13,6 +13,7 @@ import {
   FlatList,
   Image,
   Linking,
+  Modal,
   RefreshControl,
   StyleSheet,
   Text,
@@ -42,6 +43,10 @@ const categoryIcons = {
 };
 
 export default function Home() {
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [reviewText, setReviewText] = useState('');
+  const [rating, setRating] = useState(5); // Default rating
+  const [currentBusinessId, setCurrentBusinessId] = useState(null);
   const [businesses, setBusinesses] = useState([]);
   const [userEmail, setUserEmail] = useState('');
   const [userId, setUserId] = useState('');
@@ -58,47 +63,65 @@ export default function Home() {
   const navigation = useNavigation();
 
   const fetchData = async () => {
-  setRefreshing(true);
-  try {
-    const token = await AsyncStorage.getItem('userToken');
-    if (!token) return router.replace('/');
-
-    const decoded = JSON.parse(atob(token.split('.')[1]));
-
-    if (decoded.exp * 1000 < Date.now()) {
-      await AsyncStorage.removeItem('userToken');
-      return router.replace('/');
+    setRefreshing(true);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return router.replace('/');
+  
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+  
+      if (decoded.exp * 1000 < Date.now()) {
+        await AsyncStorage.removeItem('userToken');
+        return router.replace('/');
+      }
+  
+      setUserId(decoded.id);
+      setUserEmail(decoded.email);
+      setUserRole(decoded.role);
+      setUserName(decoded.name);
+      const defaultAvatar = decoded.role === 'owner'
+        ? 'https://i.pravatar.cc/100?img=12'
+        : 'https://i.pravatar.cc/100?img=36';
+      setAvatar(decoded.avatar?.trim() || defaultAvatar);
+  
+      const res = await axios.get(`${API_BASE_URL}/businesses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      const filtered = decoded.role === 'owner'
+        ? res.data.filter(b => b.owner?._id === decoded.id)
+        : res.data;
+  
+      // Fetch reviews for each business
+      const businessesWithReviews = await Promise.all(
+        filtered.map(async (business) => {
+          const reviews = await fetchReviews(business._id);
+          return { ...business, reviews };
+        })
+      );
+  
+      const enhanced = businessesWithReviews.map(b => ({
+        ...b,
+        totalAppointments: b.totalAppointments || 0,
+      }));
+  
+      setBusinesses(enhanced);
+    } catch (err) {
+      console.error('❌ Error fetching businesses:', err.message);
+      Alert.alert('Error', 'Failed to load businesses');
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
     }
+};
 
-    setUserId(decoded.id);
-    setUserEmail(decoded.email);
-    setUserRole(decoded.role);
-    setUserName(decoded.name);
-    const defaultAvatar = decoded.role === 'owner'
-      ? 'https://i.pravatar.cc/100?img=12'
-      : 'https://i.pravatar.cc/100?img=36';
-    setAvatar(decoded.avatar?.trim() || defaultAvatar);
-
-    const res = await axios.get(`${API_BASE_URL}/businesses`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    const filtered = decoded.role === 'owner'
-      ? res.data.filter(b => b.owner?._id === decoded.id)
-      : res.data;
-
-    const enhanced = filtered.map(b => ({
-      ...b,
-      totalAppointments: b.totalAppointments || 0,
-    }));
-
-    setBusinesses(enhanced);
+const fetchReviews = async (businessId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/businesses/${businessId}/reviews`);
+    return response.data;
   } catch (err) {
-    console.error('❌ Error fetching businesses:', err.message);
-    Alert.alert('Error', 'Failed to load businesses');
-  } finally {
-    setRefreshing(false);
-    setLoading(false);
+    console.error('Error fetching reviews:', err.message);
+    return [];
   }
 };
 
@@ -136,32 +159,65 @@ export default function Home() {
   };
 
   const handleAddReview = async (businessId) => {
-    Alert.prompt(
-      'Add Review',
-      'Write your review below:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Submit',
-          onPress: async (reviewText) => {
-            try {
-              const token = await AsyncStorage.getItem('userToken');
-              await axios.post(`${API_BASE_URL}/businesses/${businessId}/reviews`, 
-                { comment: reviewText, rating: 5 }, // Adjust rating as needed
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              Toast.show({ type: 'success', text1: 'Review added successfully' });
-              fetchData(); // Refresh data to include the new review
-            } catch (err) {
-              console.error('❌ Error adding review:', err.message);
-              Alert.alert('Error', 'Failed to add review');
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
+    setCurrentBusinessId(businessId);
+    setIsModalVisible(true); // Show the modal
+      // let selectedRating = 5; // Default rating
+      // Alert.prompt(
+      //   'Add Review',
+      //   'Write your review below:',
+      //   [
+      //     { text: 'Cancel', style: 'cancel' },
+      //     {
+      //       text: 'Submit',
+      //       onPress: async (reviewText) => {
+      //         try {
+      //           const token = await AsyncStorage.getItem('userToken');
+      //           await axios.post(`${API_BASE_URL}/businesses/${businessId}/reviews`, 
+      //             { comment: reviewText, rating: selectedRating },
+      //             { headers: { Authorization: `Bearer ${token}` } }
+      //           );
+      //           Toast.show({ type: 'success', text1: 'Review added successfully' });
+      //           fetchData(); // Refresh data to include the new review
+      //         } catch (err) {
+      //           console.error('❌ Error adding review:', err.message);
+      //           Alert.alert('Error', 'Failed to add review');
+      //         }
+      //       },
+      //     },
+      //   ],
+      //   'plain-text'
+      // );
   };
+
+  const submitReview = async () => {
+    if (!reviewText.trim()) {
+      Alert.alert('Error', 'Review text cannot be empty.');
+      return;
+    }
+
+    if (rating < 1 || rating > 5) {
+      Alert.alert('Error', 'Rating must be between 1 and 5.');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      await axios.post(
+        `${API_BASE_URL}/businesses/${currentBusinessId}/reviews`,
+        { comment: reviewText, rating },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      Toast.show({ type: 'success', text1: 'Review added successfully' });
+      setIsModalVisible(false); // Close the modal
+      setReviewText(''); // Reset the review text
+      setRating(5); // Reset the rating
+      fetchData(); // Refresh the business data
+    } catch (err) {
+      console.error('❌ Error adding review:', err.message);
+      Alert.alert('Error', 'Failed to add review.');
+    }
+  };
+
 
   
  const filteredBusinesses = businesses
@@ -203,6 +259,47 @@ export default function Home() {
           <Icon name="logout" size={26} color="red" />
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Review</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Write your review"
+              multiline
+              value={reviewText}
+              onChangeText={setReviewText}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter rating (1-5)"
+              keyboardType="numeric"
+              value={rating.toString()}
+              onChangeText={(value) => setRating(Number(value))}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
+                onPress={() => setIsModalVisible(false)}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.submitButton]}
+                onPress={submitReview}
+              >
+                <Text style={styles.buttonText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* 📅 Appointment Button */}
       <TouchableOpacity style={styles.appointmentButton} onPress={handleViewAppointments}>
@@ -296,28 +393,23 @@ export default function Home() {
 
             {/* Display reviews */}
             <View style={styles.reviewsSection}>
-                  <Text style={styles.reviewsTitle}>Reviews:</Text>
-                  {item.reviews?.length > 0 ? (
-                    item.reviews.map((review, index) => (
-                      <Text key={index} style={styles.reviewText}>
-                        {review.user}: {review.comment}
-                      </Text>
-                    ))
-                  ) : (
-                    <Text style={styles.noReviewsText}>No reviews yet.</Text>
-                  )}
-                  <TouchableOpacity style={styles.addReviewButton} onPress={() => handleAddReview(item._id)}>
-                    <Text style={styles.addReviewButtonText}>Add Review</Text>
-                  </TouchableOpacity>
-                </View>
+  <Text style={styles.reviewsTitle}>Reviews:</Text>
+  {item.reviews?.length > 0 ? (
+    item.reviews.map((review, index) => (
+      <View key={index} style={styles.reviewCard}>
+        <Text style={styles.reviewUser}>{review.user?.name || 'Anonymous'}</Text>
+        <Text style={styles.reviewRating}>Rating: {review.rating}/5</Text>
+        <Text style={styles.reviewComment}>{review.comment}</Text>
+      </View>
+    ))
+  ) : (
+    <Text style={styles.noReviewsText}>No reviews yet.</Text>
+  )}
+  <TouchableOpacity style={styles.addReviewButton} onPress={() => handleAddReview(item._id)}>
+    <Text style={styles.addReviewButtonText}>Add Review</Text>
+  </TouchableOpacity>
+</View>
 
-            {userRole === 'customer' && item.price != null && (
-              <View style={styles.priceAndButtonWrapper}>
-                <TouchableOpacity style={styles.bookButton} onPress={() => handleBookNow(item._id)}>
-                  <Text style={styles.bookButtonText}>Book Now</Text>
-                </TouchableOpacity>
-              </View>
-            )}
 
             {userRole === 'owner' && (
               <View style={styles.buttonRow}>
@@ -327,7 +419,7 @@ export default function Home() {
             )}
 
 
-          // {/* 💰 Price shown for both roles only once */}
+          {/* 💰 Price shown for both roles only once */}
           {item.price != null && (
             <Text style={styles.priceTag}>💰 ${parseFloat(item.price).toFixed(2)}</Text>
           )}
@@ -384,6 +476,43 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 50, backgroundColor: '#f1faff' },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    marginBottom: 15,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+  },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
+  button: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  cancelButton: { backgroundColor: '#ccc' },
+  submitButton: { backgroundColor: '#1976d2' },
+  buttonText: { color: '#fff', fontWeight: 'bold' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20,
   },

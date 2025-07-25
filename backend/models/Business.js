@@ -62,11 +62,9 @@ const businessSchema = new mongoose.Schema({
 
     }
   ],
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  timestamps: true
-}); // Adds createdAt and updatedAt
+},
+  { timestamps: true }); // Adds createdAt and updatedAt
+
+
 
 export default mongoose.model('Business', businessSchema);
