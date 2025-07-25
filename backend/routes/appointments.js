@@ -100,6 +100,9 @@ router.post('/book', authMiddleware, async (req, res) => {
       }
     );
 
+    console.log('Calling scheduleNotifications...');
+    console.log('newAppointment instance:', newAppointment);
+console.log('scheduleNotifications method:', newAppointment.scheduleNotifications);
     await newAppointment.scheduleNotifications(); // Schedule notifications
 
     res.json({ message: 'Appointment booked successfully' });

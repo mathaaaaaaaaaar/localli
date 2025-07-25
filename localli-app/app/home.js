@@ -311,13 +311,7 @@ export default function Home() {
                   </TouchableOpacity>
                 </View>
 
-            {userRole === 'customer' && item.price != null && (
-              <View style={styles.priceAndButtonWrapper}>
-                <TouchableOpacity style={styles.bookButton} onPress={() => handleBookNow(item._id)}>
-                  <Text style={styles.bookButtonText}>Book Now</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            
 
             {userRole === 'owner' && (
               <View style={styles.buttonRow}>
@@ -327,7 +321,7 @@ export default function Home() {
             )}
 
 
-          // {/* 💰 Price shown for both roles only once */}
+          {/* 💰 Price shown for both roles only once */}
           {item.price != null && (
             <Text style={styles.priceTag}>💰 ${parseFloat(item.price).toFixed(2)}</Text>
           )}
