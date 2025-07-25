@@ -393,22 +393,22 @@ const fetchReviews = async (businessId) => {
 
             {/* Display reviews */}
             <View style={styles.reviewsSection}>
-  <Text style={styles.reviewsTitle}>Reviews:</Text>
-  {item.reviews?.length > 0 ? (
-    item.reviews.map((review, index) => (
-      <View key={index} style={styles.reviewCard}>
-        <Text style={styles.reviewUser}>{review.user?.name || 'Anonymous'}</Text>
-        <Text style={styles.reviewRating}>Rating: {review.rating}/5</Text>
-        <Text style={styles.reviewComment}>{review.comment}</Text>
-      </View>
-    ))
-  ) : (
-    <Text style={styles.noReviewsText}>No reviews yet.</Text>
-  )}
-  <TouchableOpacity style={styles.addReviewButton} onPress={() => handleAddReview(item._id)}>
-    <Text style={styles.addReviewButtonText}>Add Review</Text>
-  </TouchableOpacity>
-</View>
+              <Text style={styles.reviewsTitle}>Reviews:</Text>
+              {item.reviews?.length > 0 ? (
+                item.reviews.map((review, index) => (
+                  <View key={index} style={styles.reviewCard}>
+                    <Text style={styles.reviewUser}>{review.user?.name || 'Anonymous'}</Text>
+                    <Text style={styles.reviewRating}>Rating: {review.rating}/5</Text>
+                    <Text style={styles.reviewComment}>{review.comment}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noReviewsText}>No reviews yet.</Text>
+              )}
+              <TouchableOpacity style={styles.addReviewButton} onPress={() => handleAddReview(item._id)}>
+                <Text style={styles.addReviewButtonText}>Add Review</Text>
+              </TouchableOpacity>
+            </View>
 
 
             {userRole === 'owner' && (
@@ -600,5 +600,21 @@ appointmentBadge: {
   color: '#1565c0',
   textDecorationLine: 'underline',
   fontWeight: '500',
-}
+},
+reviewsSection: { marginTop: 10, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8 },
+reviewsTitle: { fontWeight: 'bold', marginBottom: 5 },
+reviewCard: { marginBottom: 10, padding: 10, backgroundColor: '#fff', borderRadius: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+reviewUser: { fontWeight: 'bold', marginBottom: 5 },
+reviewRating: { color: '#555', marginBottom: 5 },
+reviewComment: { color: '#333' },
+noReviewsText: { fontStyle: 'italic', color: 'gray' },
+addReviewButton: {
+  marginTop: 10,
+  backgroundColor: '#1976d2',
+  paddingVertical: 8,
+  paddingHorizontal: 16,
+  borderRadius: 8,
+  alignItems: 'center',
+},
+addReviewButtonText: { color: '#fff', fontWeight: 'bold' },
 });
