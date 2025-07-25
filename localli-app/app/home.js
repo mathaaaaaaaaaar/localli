@@ -393,6 +393,7 @@ const fetchReviews = async (businessId) => {
 
             {/* Display reviews */}
             <View style={styles.reviewsSection}>
+
               <Text style={styles.reviewsTitle}>Reviews:</Text>
               {item.reviews?.length > 0 ? (
                 item.reviews.map((review, index) => (
@@ -409,7 +410,6 @@ const fetchReviews = async (businessId) => {
                 <Text style={styles.addReviewButtonText}>Add Review</Text>
               </TouchableOpacity>
             </View>
-
 
             {userRole === 'owner' && (
               <View style={styles.buttonRow}>
