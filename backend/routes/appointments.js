@@ -1,7 +1,9 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import nodemailer from 'nodemailer';
 
 import authMiddleware from '../middleware/authMiddleware.js';
+import transporter from '../middleware/emailer.js';
 import Appointment from '../models/Appointment.js';
 import Business from '../models/Business.js';
 import Notification from '../models/Notification.js';
@@ -91,7 +93,110 @@ router.post('/book', authMiddleware, async (req, res) => {
     // Send immediate notification
     const business = await Business.findById(businessId);
     if (business) {
-      const message = `Your booking for ${date} at ${slot} has been confirmed.`;
+      let message = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking Confirmation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .email-header {
+      background-color: #1976d2;
+      color: #ffffff;
+      text-align: center;
+      padding: 20px;
+    }
+    .email-header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .email-body {
+      padding: 20px;
+      color: #333333;
+    }
+    .email-body h2 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    .email-body p {
+      margin: 10px 0;
+      line-height: 1.6;
+    }
+    .email-footer {
+      background-color: #f4f4f4;
+      text-align: center;
+      padding: 10px;
+      font-size: 12px;
+      color: #777777;
+    }
+    .button {
+      display: inline-block;
+      background-color: #1976d2;
+      color: #ffffff;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      margin-top: 20px;
+      font-size: 16px;
+    }
+    .button:hover {
+      background-color: #155a9c;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- Header -->
+    <div class="email-header">
+      <h1>Booking Confirmation</h1>
+    </div>
+
+    <!-- Body -->
+    <div class="email-body">
+      <h2>Hi!</h2>
+      <p>Thank you for booking with <strong>{{businessName}}</strong>! Your appointment has been successfully confirmed.</p>
+      <p>Here are the details of your booking:</p>
+      <ul>
+        <li><strong>Date:</strong> {{date}}</li>
+        <li><strong>Time:</strong> {{slot}}</li>
+        <li><strong>Location:</strong> {{businessAddress}}</li>
+      </ul>
+      <p>If you have any questions or need to reschedule, feel free to contact us at <a href="mailto:{{businessEmail}}">{{businessEmail}}</a> or call us at {{businessPhone}}.</p>
+      <a href="{{appointmentDetailsLink}}" class="button">View Appointment Details</a>
+    </div>
+
+    <!-- Footer -->
+    <div class="email-footer">
+      <p>&copy; {{year}} {{businessName}}. All rights reserved.</p>
+      <p>This is an automated email. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+        message = message
+        .replace('{{businessName}}', business.name)
+        .replace('{{date}}', date)
+        .replace('{{slot}}', slot)
+        .replace('{{businessAddress}}', business.address)
+        .replace('{{businessEmail}}', business.email)
+        .replace('{{businessPhone}}', business.phone)
+        .replace('{{year}}', new Date().getFullYear());
+
       const notification = new Notification({
         user: userId,
         message,
@@ -101,13 +206,15 @@ router.post('/book', authMiddleware, async (req, res) => {
 
       // Send email notification
       try {
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
           from: process.env.EMAIL_USER || "elliott.wisoky@ethereal.email", // Sender address
           to: req.user.email, // Customer's email address
           subject: 'Booking Confirmation',
-          text: message,
+          html: message,
         });
-        console.log(`Email sent to ${req.user.email}: ${message}`);
+        console.log(`Email sent to ${req.user.email}`);
+        console.log(req.user);
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info)); // Preview email in Ethereal
       } catch (err) {
         console.error(`❌ Error sending email to ${req.user.email}:`, err);
       }

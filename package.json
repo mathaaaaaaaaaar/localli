@@ -23,7 +23,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.17.0",
     "mongoose": "^8.15.1",
-    "react-native-dialog": "^9.3.0"
+    "react-native-dialog": "^9.3.0",
 
     "node-schedule": "^2.1.1",
     "nodemailer": "^7.0.5"
