@@ -21,6 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Rating } from 'react-native-ratings';
 import Toast from 'react-native-toast-message';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -96,7 +97,11 @@ export default function Home() {
       const businessesWithReviews = await Promise.all(
         filtered.map(async (business) => {
           const reviews = await fetchReviews(business._id);
-          return { ...business, reviews };
+          let avgRating = 0;
+          if (reviews.length > 0) {
+            avgRating = Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) * 10) / 10;
+          }
+          return { ...business, reviews, avgRating }; // Add avgRating to the business object
         })
       );
   
@@ -260,7 +265,7 @@ const fetchReviews = async (businessId) => {
         </TouchableOpacity>
       </View>
 
-      <Modal
+      {/* <Modal
         visible={isModalVisible}
         animationType="slide"
         transparent={true}
@@ -282,6 +287,49 @@ const fetchReviews = async (businessId) => {
               keyboardType="numeric"
               value={rating.toString()}
               onChangeText={(value) => setRating(Number(value))}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
+                onPress={() => setIsModalVisible(false)}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.submitButton]}
+                onPress={submitReview}
+              >
+                <Text style={styles.buttonText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal> */}
+
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Review</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Write your review"
+              multiline
+              value={reviewText}
+              onChangeText={setReviewText}
+            />
+            <Text style={{ marginBottom: 10, fontWeight: 'bold' }}>Rate the business:</Text>
+            <Rating
+              count={5}
+              defaultRating={rating}
+              size={30}
+              showRating={false}
+              onFinishRating={(value) => setRating(value)} // Update the rating state
+              selectedColor="#FFD700" // Set the star color to gold
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -372,16 +420,20 @@ const fetchReviews = async (businessId) => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
                 <Icon name={categoryIcons[item.category] || 'store'} size={20} color="#555" style={{ marginRight: 8 }} />
                 <Text style={styles.name}>{item.name}</Text>
+                {/* 💰 Price shown for both roles only once */}
+                {item.price != null && (
+                  <View style={{ marginLeft: 'auto' }}>
+                    <Text style={styles.priceTag}>💰 ${parseFloat(item.price).toFixed(2)}</Text>
+                  </View>
+                )}
               </View>
-              {userRole === 'customer' && item.price != null && (
-                <Text style={styles.priceTag}>${parseFloat(item.price).toFixed(2)}</Text>
-              )}
             </View>
 
+            
             <Text>{item.description}</Text>
             <Text style={styles.meta}>{item.category} | {item.address}</Text>
 
@@ -394,15 +446,15 @@ const fetchReviews = async (businessId) => {
             {/* Display reviews */}
             <View style={styles.reviewsSection}>
 
-              <Text style={styles.reviewsTitle}>Reviews:</Text>
               {item.reviews?.length > 0 ? (
-                item.reviews.map((review, index) => (
-                  <View key={index} style={styles.reviewCard}>
-                    <Text style={styles.reviewUser}>{review.user?.name || 'Anonymous'}</Text>
-                    <Text style={styles.reviewRating}>Rating: {review.rating}/5</Text>
-                    <Text style={styles.reviewComment}>{review.comment}</Text>
-                  </View>
-                ))
+                // item.reviews.map((review, index) => (
+                //   <View key={index} style={styles.reviewCard}>
+                //     <Text style={styles.reviewUser}>{review.user?.name || 'Anonymous'}</Text>
+                //     <Text style={styles.reviewRating}>Rating: {review.rating}/5</Text>
+                //     <Text style={styles.reviewComment}>{review.comment}</Text>
+                //   </View>
+                // ))
+                <Text style={styles.reviewsTitle}>Rating: {item.avgRating} ⭐</Text>
               ) : (
                 <Text style={styles.noReviewsText}>No reviews yet.</Text>
               )}
@@ -411,36 +463,12 @@ const fetchReviews = async (businessId) => {
               </TouchableOpacity>
             </View>
 
-            {userRole === 'owner' && (
-              <View style={styles.buttonRow}>
-                <Button title="Edit" onPress={() => handleEdit(item._id)} />
-                <Button title="Delete" color="red" onPress={() => handleDelete(item._id)} />
-              </View>
-            )}
-
-
-          {/* 💰 Price shown for both roles only once */}
-          {item.price != null && (
-            <Text style={styles.priceTag}>💰 ${parseFloat(item.price).toFixed(2)}</Text>
-          )}
-
         {/* 👤 Owner badge */}
         {userRole === 'owner' && (
           <TouchableOpacity onPress={handleViewAppointments}>
             <Text style={styles.appointmentBadge}>
               🗓️ {item.totalAppointments} appointments
             </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* 📄 Description + Meta */}
-        <Text>{item.description}</Text>
-        <Text style={styles.meta}>{item.category} | {item.address}</Text>
-
-        {/* 📞 Phone */}
-        {item.phone && (
-          <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.phone}`)}>
-            <Text style={styles.phoneNumber}>📞 {item.phone}</Text>
           </TouchableOpacity>
         )}
 
